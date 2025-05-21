@@ -4,6 +4,7 @@ from django.db.models.base import Model
 from django.db.models.fields import DateField
 from django.db.models.signals import post_save
 from django.utils import timezone
+from django.templatetags.static import static
 
 from posts.models import Post, BaseModel
 import PIL 
@@ -31,7 +32,7 @@ class Profile(BaseModel):
     url = models.URLField(max_length=200, null=True, blank=True)
     bio = models.CharField(max_length=200, null=True, blank=True)
     created = models.DateField(auto_now_add=True)
-    image = models.ImageField(upload_to=user_directory_path, blank=True, null=True, verbose_name='Picture', default="default.jpg")
+    image = models.ImageField(upload_to=user_directory_path, blank=True, null=True, verbose_name='Picture')
     favourite = models.ManyToManyField(Post, blank=True)
     
     class Meta:
@@ -67,13 +68,13 @@ class Profile(BaseModel):
         return first or last or self.user.username
     
     @property
-    def get_avatar(self):
+    def get_image(self):
         """
         Return the profile image URL
         """
         if self.image:
             return self.image.url
-        return '/media/default.jpg'
+        return static('images/default.jpg')
     
     @property
     def get_post_count(self):

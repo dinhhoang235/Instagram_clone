@@ -36,6 +36,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     follower_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
+    image  = serializers.SerializerMethodField()
     
     class Meta:
         model = Profile
@@ -77,6 +78,13 @@ class ProfileSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user') and request.user.is_authenticated:
             return Follow.objects.filter(follower=request.user, following=obj.user).exists()
         return False
+    
+    def get_image(self, obj):
+        request = self.context.get('request')
+        url = obj.get_image  # lấy URL tương đối từ model
+        if request:
+            return request.build_absolute_uri(url)  # thành URL tuyệt đối
+        return url
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=False)

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.templatetags.static import static
 from comments.models import Comment
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -18,14 +19,12 @@ class CommentSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = obj.user
         if hasattr(user, 'profile') and user.profile.image:
-            url = user.profile.image.url 
-            if request:
-                return request.build_absolute_uri(url) 
-            return url
-        default_url = '/media/default.jpg'
+            url = user.profile.image.url
+        else:
+            url = static('images/default.jpg')
         if request:
-            return request.build_absolute_uri(default_url)
-        return default_url
+            return request.build_absolute_uri(url)
+        return url
     
     def get_is_owner(self, obj):
         request = self.context.get('request')
