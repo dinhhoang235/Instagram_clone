@@ -45,11 +45,13 @@ This project is a comprehensive Instagram clone that implements core features li
 - **Pillow** - Image processing library for handling uploads
 - **Docker & Docker Compose** - Containerization for easy deployment
 
-### Frontend (Planned)
-- **React** - Frontend library for building user interfaces
-- **Redux** - State management
-- **Axios** - HTTP client for API requests
-- **Bootstrap/Material UI** - CSS framework for responsive design
+### Frontend
+- **Next.js** - React framework for production-ready applications
+- **React** - UI library for building component-based interfaces
+- **TypeScript** - Type-safe JavaScript for better development experience
+- **TailwindCSS** - Utility-first CSS framework
+- **ESLint** - Code quality tool
+
 
 ## Backend Architecture
 
@@ -138,6 +140,13 @@ The backend provides a comprehensive REST API:
 - Create superuser: `python manage.py createsuperuser`
 - Run tests: `python manage.py test`
 
+### Frontend Development
+- The Next.js frontend is located in the `frontend/` directory
+- Run development server: `npm run dev`
+- Build for production: `npm run build`
+- Start production server: `npm run start`
+- Run linting: `npm run lint`
+
 ## Project Structure
 
 ```
@@ -153,7 +162,13 @@ instagram-clone/
 │   ├── requirements.txt   # Python dependencies
 │   ├── Dockerfile         # Backend Docker configuration
 │   └── entrypoint.sh      # Docker entrypoint script
-├── frontend/              # React frontend (planned)
+├── frontend/              # Next.js frontend
+│   ├── src/               # Source code
+│   │   ├── app/           # Next.js app router
+│   │   └── components/    # React components
+│   ├── public/            # Static assets
+│   ├── package.json       # Frontend dependencies
+│   └── Dockerfile         # Frontend Docker configuration
 ├── docker-compose.yml     # Docker Compose configuration
 └── .env                   # Environment variables
 ```
