@@ -26,8 +26,7 @@ class Profile(BaseModel):
     Profile model for storing user profile information
     """
     user = models.OneToOneField(User, related_name='profile', on_delete=models.CASCADE)
-    first_name = models.CharField(max_length=200, null=True, blank=True)
-    last_name = models.CharField(max_length=200, null=True, blank=True)
+    full_name = models.CharField(max_length=400, null=True, blank=True)
     location = models.CharField(max_length=200, null=True, blank=True)
     url = models.URLField(max_length=200, null=True, blank=True)
     bio = models.CharField(max_length=200, null=True, blank=True)
@@ -55,17 +54,15 @@ class Profile(BaseModel):
                 output_size = (300, 300)
                 img.thumbnail(output_size)
                 img.save(self.image.path)
-    
     @property
-    def full_name(self):
+    def get_full_name(self):
         """
         Return the user's full name
         """
-        first = self.first_name or self.user.first_name or ''
-        last = self.last_name or self.user.last_name or ''
-        if first and last:
-            return f"{first} {last}"
-        return first or last or self.user.username
+        if self.full_name:
+            return self.full_name
+        # Fallback to username if no full name is provided
+        return self.user.username
     
     @property
     def get_image(self):

@@ -14,7 +14,7 @@ services:
     env_file:
       - ./.env
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
       - WATCHPACK_POLLING=true # Hot reloading for development
       - NODE_ENV=development # Set to development for hot reloading
 

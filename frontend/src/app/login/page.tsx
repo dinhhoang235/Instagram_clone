@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/components/auth-provider"
+import { login  as loginApi } from "@/lib/services/auth"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -23,17 +24,30 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      login({ email })
+      const token = await loginApi({
+        username_or_email:email,
+        password
+      })
+      await login({
+        access: token.access,
+        refresh: token.refresh,
+      })
       router.push("/")
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Login failed:", error)
+      let message = "Something went wrong."
+      if (error instanceof Error) {
+        message = error.message
+      } else if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { data?: { detail?: string } } }
+        message = apiError.response?.data?.detail || "Login failed."
+      }
+      alert(message)
     } finally {
       setIsLoading(false)
     }
+
   }
 
   return (

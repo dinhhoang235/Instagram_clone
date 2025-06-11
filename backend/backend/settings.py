@@ -89,6 +89,11 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
+
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+
 ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [
@@ -162,10 +167,11 @@ USE_TZ = True
 # JWT Settings
 from datetime import timedelta
 
-JWS = {
-    "AUTH_HEADER_TYPES": ["Bearer"],
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=7),
+SIMPLE_JWT = {
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
 }
 
 # Static files (CSS, JavaScript, Images)

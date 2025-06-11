@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/components/auth-provider"
+import { register, login as loginApi } from "@/lib/services/auth"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
@@ -19,6 +20,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
   const { login } = useAuth()
 
@@ -27,12 +29,32 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      login({ email })
+      // Call api
+      await register({
+        username,
+        password,
+        email,
+        confirm_password: password,
+        full_name: fullName,
+      })
+      
+      //auto login after registration
+      const token = await loginApi({username_or_email:username, password})
+
+      await login(token)
       router.push("/")
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Registration failed:", error)
+      
+      let message = "Something went wrong."
+      
+      if (error instanceof Error) {
+        message = error.message
+      } else if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { data?: { detail?: string } } }
+        message = apiError.response?.data?.detail || "Registration failed."
+      }
+      setErrorMessage(message)
     } finally {
       setIsLoading(false)
     }
@@ -62,6 +84,9 @@ export default function RegisterPage() {
             </div>
 
             <form onSubmit={handleRegister} className="space-y-4">
+              {errorMessage && (
+                <p className="text-red-500 text-sm text-center">{errorMessage}</p>
+              )}  
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -133,6 +158,7 @@ export default function RegisterPage() {
               <Button type="submit" className="w-full bg-black text-white text-xs" disabled={isLoading}>
                 {isLoading ? "Signing up..." : "Sign up"}
               </Button>
+              
             </form>
           </CardContent>
           <CardFooter className="flex justify-center">
