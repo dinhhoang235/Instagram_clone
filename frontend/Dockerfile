@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-slim
 
 # Set working directory
 WORKDIR /app
@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --no-audit --legacy-peer-deps
 
 # Copy the rest of the code
 COPY . .
