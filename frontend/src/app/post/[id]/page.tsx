@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
-// import { Comments } from "@/components/comments"
+import { Comments } from "@/components/comments"
 import { useAuth } from "@/components/auth-provider"
 import { redirect } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -225,7 +225,7 @@ export default function PostPage() {
 
           {/* Comments Section */}
           <div className="flex-1 p-4 overflow-hidden">
-            {/* <Comments postId={postId} /> */}
+            <Comments postId={postId} />
           </div>
 
           {/* Post Actions */}
