@@ -4,7 +4,8 @@ from users.models import Profile
 from posts.models import Post
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.templatetags.static import static
+
 
 
 class CustomTokenObtainPairSerializer(serializers.Serializer):
@@ -150,70 +151,43 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'access': str(refresh.access_token),
         }
 
+class ProfileShortSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username')
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = ['username', 'avatar', 'is_verified']
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        url = obj.get_avatar
+        if request:
+            return request.build_absolute_uri(url) 
+        return url
+
 class ProfileSerializer(serializers.ModelSerializer):
-    username = serializers.SerializerMethodField()
-    email = serializers.SerializerMethodField()
-    display_name = serializers.SerializerMethodField()
-    post_count = serializers.SerializerMethodField()
-    follower_count = serializers.SerializerMethodField()
-    following_count = serializers.SerializerMethodField()
-    is_following = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = Profile
         fields = [
-            'id', 'user', 'username', 'email', 'display_name', 
-            'full_name', 'location', 'url', 'bio', 
-            'created', 'image', 'post_count', 'follower_count', 
-            'following_count', 'is_following'
+            'username', 'email',
+            'full_name', 'bio', 'website', 'phone_number', 'gender',
+            'avatar',
+            'is_verified',
+            'is_private', 'allow_tagging', 'show_activity', 'allow_story_resharing',
+            'allow_comments', 'allow_messages',
         ]
-        read_only_fields = ['id', 'user', 'created']
     
-    def get_username(self, obj):
-        return obj.user.username
-    
-    def get_email(self, obj):
-        return obj.user.email
-    
-    def get_display_name(self, obj):
-        return obj.get_full_name
-    
-    def get_post_count(self, obj):
-        return Post.objects.filter(user=obj.user).count()
-    
-    def get_follower_count(self, obj):
-        from posts.models import Follow
-        return Follow.objects.filter(following=obj.user).count()
-    
-    def get_following_count(self, obj):
-        from posts.models import Follow
-        return Follow.objects.filter(follower=obj.user).count()
-    
-    def get_is_following(self, obj):
-        from posts.models import Follow
+    def get_avatar(self, obj):
         request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return Follow.objects.filter(follower=request.user, following=obj.user).exists()
-        return False
-    
-    def get_image(self, obj):
-        request = self.context.get('request')
-        url = obj.get_image  # lấy URL tương đối từ model
+        url = obj.get_avatar
         if request:
-            return request.build_absolute_uri(url)  # thành URL tuyệt đối
+            return request.build_absolute_uri(url) 
         return url
-
-class ProfileUpdateSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(required=False)
-    location = serializers.CharField(required=False)
-    url = serializers.URLField(required=False)
-    bio = serializers.CharField(required=False)
-    image = serializers.ImageField(required=False)
-    
-    class Meta:
-        model = Profile
-        fields = ['full_name', 'location', 'url', 'bio', 'image']
 
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
@@ -224,106 +198,3 @@ class PasswordChangeSerializer(serializers.Serializer):
         if attrs.get('new_password') != attrs.get('confirm_password'):
             raise serializers.ValidationError({"new_password": "Password fields didn't match."})
         return attrs
-
-class ProfileListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for profile lists"""
-    username = serializers.SerializerMethodField()
-    display_name = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    is_following = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Profile
-        fields = ['id', 'username', 'display_name', 'image', 'is_following']
-    
-    def get_username(self, obj):
-        return obj.user.username
-    
-    def get_display_name(self, obj):
-        return obj.get_full_name
-    
-    def get_image(self, obj):
-        request = self.context.get('request')
-        url = obj.get_image
-        if request:
-            return request.build_absolute_uri(url)
-        return url
-    
-    def get_is_following(self, obj):
-        from posts.models import Follow
-        request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return Follow.objects.filter(follower=request.user, following=obj.user).exists()
-        return False
-
-class UserSearchSerializer(serializers.ModelSerializer):
-    """Serializer for user search results"""
-    profile = ProfileListSerializer(read_only=True)
-    
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'profile']
-
-class ProfileDetailSerializer(serializers.ModelSerializer):
-    """Detailed serializer for profile detail views"""
-    username = serializers.SerializerMethodField()
-    email = serializers.SerializerMethodField()
-    display_name = serializers.SerializerMethodField()
-    post_count = serializers.SerializerMethodField()
-    follower_count = serializers.SerializerMethodField()
-    following_count = serializers.SerializerMethodField()
-    favourite_count = serializers.SerializerMethodField()
-    is_following = serializers.SerializerMethodField()
-    is_own_profile = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Profile
-        fields = [
-            'id', 'user', 'username', 'email', 'display_name', 
-            'full_name', 'location', 'url', 'bio', 'created',
-            'image', 'post_count', 'follower_count', 'following_count',
-            'favourite_count', 'is_following', 'is_own_profile'
-        ]
-        read_only_fields = ['id', 'user', 'created']
-    
-    def get_username(self, obj):
-        return obj.user.username
-    
-    def get_email(self, obj):
-        return obj.user.email
-    
-    def get_display_name(self, obj):
-        return obj.get_full_name
-    
-    def get_post_count(self, obj):
-        return obj.get_post_count
-    
-    def get_follower_count(self, obj):
-        return obj.get_follower_count
-    
-    def get_following_count(self, obj):
-        return obj.get_following_count
-    
-    def get_favourite_count(self, obj):
-        return obj.get_favourites_count
-    
-    def get_is_following(self, obj):
-        from posts.models import Follow
-        request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return Follow.objects.filter(follower=request.user, following=obj.user).exists()
-        return False
-    
-    def get_is_own_profile(self, obj):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return obj.user == request.user
-        return False
-    
-    def get_image(self, obj):
-        request = self.context.get('request')
-        url = obj.get_image
-        if request:
-            return request.build_absolute_uri(url)
-        return url

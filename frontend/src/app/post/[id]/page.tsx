@@ -13,60 +13,8 @@ import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X, BadgeCheck } f
 import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
-
-// Mock post data - in a real app, this would come from an API
-const postData = {
-  "1": {
-    id: 1,
-    user: {
-      username: "museacg_vn",
-      name: "Muse ACG Vietnam",
-      avatar: "/placeholder-user.jpg",
-      isVerified: true,
-    },
-    image: "/placeholder.svg?height=600&width=600",
-    caption:
-      "🎬 BUỔI FAN SCREENING DUY NHẤT của 【DAN DA DAN: TẬP NHẬN】sẽ chính thức diễn ra vào tối 16 ngày 🗓️ Ai sẽ là người may mắn được trải nghiệm sớm những cảnh phim đầu tiên? 🎭 Đây là lần đầu tiên DAN DA DAN đây! Hãy để lại bình luận nói bạn cũng đang đếm ngược từng giây nhé! 🔥",
-    hashtags: "#ダンダダン #DANDADAN #TANHĂN #anime #movie",
-    likes: 10,
-    comments: 89,
-    timeAgo: "8 hours ago",
-    location: "CGV Sư Vạn Hạnh và CGV Royal City",
-  },
-  "2": {
-    id: 2,
-    user: {
-      username: "jane_smith",
-      name: "Jane Smith",
-      avatar: "/placeholder-user.jpg",
-      isVerified: true,
-    },
-    image: "/placeholder.svg?height=600&width=600",
-    caption: "Coffee and code ☕️💻 Starting the day right! #coding #coffee #developer",
-    hashtags: "#coding #coffee #developer",
-    likes: 892,
-    comments: 45,
-    timeAgo: "4 hours ago",
-    location: "San Francisco, CA",
-  },
-  "3": {
-    id: 3,
-    user: {
-      username: "travel_enthusiast",
-      name: "Travel Enthusiast",
-      avatar: "/placeholder-user.jpg",
-      isVerified: false,
-    },
-    image: "/placeholder.svg?height=600&width=600",
-    caption:
-      "Exploring the mountains today! The view is absolutely breathtaking 🏔️ #travel #mountains #adventure #hiking",
-    hashtags: "#travel #mountains #adventure #hiking",
-    likes: 2156,
-    comments: 134,
-    timeAgo: "6 hours ago",
-    location: "Swiss Alps",
-  },
-}
+import { getPostById, likePost } from "@/lib/services/posts"
+import { PostType } from "@/types/post"
 
 export default function PostPage() {
   const { isAuthenticated } = useAuth()
@@ -74,28 +22,34 @@ export default function PostPage() {
   const router = useRouter()
   const { theme } = useTheme()
   const postId = params.id as string
+  const [post, setPost] = useState<PostType | null>(null)
+
   const [comment, setComment] = useState("")
   const [isLiked, setIsLiked] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [likes, setLikes] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
 
   if (!isAuthenticated) {
     redirect("/login")
   }
 
-  const post = postData[postId as keyof typeof postData]
-
   useEffect(() => {
-    if (post) {
-      setLikes(post.likes)
+  const fetchPost = async () => {
+    try {
+      const data = await getPostById(postId)
+      setPost(data)
+      setLikes(data.likes || 0)
+      setIsLiked(data.is_liked || false)
+      console.log("Fetched post:", data)
+    } catch (err) {
+      console.error("Error fetching post", err)
     }
-    // Auto-focus comment input when page loads
-    const timer = setTimeout(() => {
-      commentInputRef.current?.focus()
-    }, 100)
-    return () => clearTimeout(timer)
-  }, [post])
+  }
+
+  fetchPost()
+}, [postId])
 
   if (!post) {
     return (
@@ -106,7 +60,7 @@ export default function PostPage() {
             <div className="max-w-4xl mx-auto px-4 py-8">
               <div className="text-center">
                 <h1 className="text-2xl font-bold mb-4">Post not found</h1>
-                <p className="text-muted-foreground">The post you're looking for doesn't exist.</p>
+                <p className="text-muted-foreground">The post youre looking for doesnt exist.</p>
               </div>
             </div>
           </main>
@@ -141,9 +95,32 @@ export default function PostPage() {
     )
   }
 
-  const handleLike = () => {
-    setIsLiked(!isLiked)
-    setLikes((prev) => (isLiked ? prev - 1 : prev + 1))
+  // like/unlike post function
+  const handleLike = async () => {
+  // Ghi nhớ giá trị ban đầu
+  const previousLiked = isLiked
+
+  // Optimistic UI update
+  setIsAnimating(true)
+  setIsLiked(!previousLiked)
+  setLikes((prev) => (previousLiked ? prev - 1 : prev + 1))
+
+  try {
+    await likePost(postId)
+  } catch (err) {
+    console.error("Failed to toggle like", err)
+    // Revert UI state on error
+    setIsLiked(previousLiked)
+    setLikes((prev) => (previousLiked ? prev + 1 : prev - 1))
+  } finally {
+    setTimeout(() => setIsAnimating(false), 300)
+  }
+}
+
+  const handleDoubleClick = () => {
+    if (!isLiked) {
+      handleLike()
+    }
   }
 
   const isDark = theme === "dark"
@@ -163,7 +140,8 @@ export default function PostPage() {
       <div className="flex w-full h-full overflow-hidden">
         {/* Post Image */}
         <div
-          className={`flex-1 flex items-center justify-center ${isDark ? "bg-black" : "bg-gray-50"} overflow-hidden`}
+          className={`flex-1 flex items-center justify-center ${isDark ? "bg-black" : "bg-gray-50"} overflow-hidden relative select-none`}
+          onDoubleClick={handleDoubleClick}
         >
           <div className="relative max-w-full max-h-full">
             <Image
@@ -171,9 +149,22 @@ export default function PostPage() {
               alt="Post image"
               width={800}
               height={800}
+              layout="responsive"
               className="object-contain max-h-[100vh] max-w-[calc(100vw-400px)]"
               priority
             />
+
+            {/* Double-tap heart animation */}
+            {isAnimating && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <Heart
+                  className="w-24 h-24 text-white fill-red-500"
+                  style={{
+                    animation: "heartPop 0.6s ease-out",
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -241,37 +232,64 @@ export default function PostPage() {
           <div className={`${isDark ? "border-gray-800" : "border-gray-200"} border-t p-4 flex-shrink-0`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" onClick={handleLike} className="p-0 h-auto hover:bg-transparent">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLike}
+                  className={`p-0 h-auto hover:bg-transparent transition-transform duration-150 ${isAnimating ? "scale-125" : "scale-100"} hover:scale-110`}
+                >
                   <Heart
-                    className={`w-6 h-6 ${isLiked ? "fill-red-500 text-red-500" : isDark ? "text-white" : "text-black"}`}
+                    className={`w-6 h-6 transition-all duration-200 ${
+                      isLiked
+                        ? "fill-red-500 text-red-500 scale-110"
+                        : isDark
+                          ? "text-white hover:text-gray-300"
+                          : "text-black hover:text-gray-600"
+                    }`}
                   />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-0 h-auto hover:bg-transparent"
+                  className="p-0 h-auto hover:bg-transparent hover:scale-110 transition-transform"
                   onClick={() => commentInputRef.current?.focus()}
                 >
-                  <MessageCircle className={`w-6 h-6 ${isDark ? "text-white" : "text-black"}`} />
+                  <MessageCircle
+                    className={`w-6 h-6 transition-colors ${isDark ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"}`}
+                  />
                 </Button>
-                <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
-                  <Send className={`w-6 h-6 ${isDark ? "text-white" : "text-black"}`} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-0 h-auto hover:bg-transparent hover:scale-110 transition-transform"
+                >
+                  <Send
+                    className={`w-6 h-6 transition-colors ${isDark ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"}`}
+                  />
                 </Button>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSaved(!isSaved)}
-                className="p-0 h-auto hover:bg-transparent"
+                className="p-0 h-auto hover:bg-transparent hover:scale-110 transition-transform"
               >
                 <Bookmark
-                  className={`w-6 h-6 ${isSaved ? (isDark ? "fill-white text-white" : "fill-black text-black") : isDark ? "text-white" : "text-black"}`}
+                  className={`w-6 h-6 transition-all duration-200 ${
+                    isSaved
+                      ? isDark
+                        ? "fill-white text-white"
+                        : "fill-black text-black"
+                      : isDark
+                        ? "text-white hover:text-gray-300"
+                        : "text-black hover:text-gray-600"
+                  }`}
                 />
               </Button>
             </div>
 
             <div className={`font-semibold text-sm mb-2 ${isDark ? "text-white" : "text-black"}`}>
-              {likes.toLocaleString()} likes
+              {likes === 1 ? "1 like" : `${likes.toLocaleString()} likes`}
             </div>
 
             {/* Add Comment Input */}
@@ -301,7 +319,7 @@ export default function PostPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-blue-500 font-semibold p-0 h-auto hover:bg-transparent hover:text-blue-600"
+                  className="text-blue-500 font-semibold p-0 h-auto hover:bg-transparent hover:text-blue-600 transition-colors"
                   onClick={handleAddComment}
                 >
                   Post
@@ -311,6 +329,23 @@ export default function PostPage() {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes heartPop {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   )
 }

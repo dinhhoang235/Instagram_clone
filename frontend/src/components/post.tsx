@@ -10,29 +10,19 @@ import { Input } from "@/components/ui/input"
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeCheck } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
+import { PostType } from "@/types/post"
 
 interface PostProps {
-  post: {
-    id: number
-    user: {
-      username: string
-      avatar: string
-      isVerified: boolean
-    }
-    image: string
-    caption: string
-    likes: number
-    comments: number
-    timeAgo: string
-    location?: string
-  }
+  post: PostType
 }
 
 export function Post({ post }: PostProps) {
   const [isLiked, setIsLiked] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [comment, setComment] = useState("")
-  const [showComments, setShowComments] = useState(false)
+  // const [showComments, setShowComments] = useState(false)
+  const [likes, setLikes] = useState(post.likes)
+  const [isAnimating, setIsAnimating] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -48,6 +38,21 @@ export function Post({ post }: PostProps) {
 
   const handleImageClick = () => {
     router.push(`/post/${post.id}`)
+  }
+
+  const handleLike = () => {
+    setIsAnimating(true)
+    setIsLiked(!isLiked)
+    setLikes((prev) => (isLiked ? prev - 1 : prev + 1))
+
+    // Reset animation after a short delay
+    setTimeout(() => setIsAnimating(false), 300)
+  }
+
+  const handleDoubleClick = () => {
+    if (!isLiked) {
+      handleLike()
+    }
   }
 
   return (
@@ -94,31 +99,70 @@ export function Post({ post }: PostProps) {
       </div>
 
       {/* Post Image */}
-      <div className="relative aspect-square cursor-pointer" onClick={handleImageClick}>
+      <div
+        className="relative aspect-square cursor-pointer select-none"
+        onClick={handleImageClick}
+        onDoubleClick={handleDoubleClick}
+      >
         <Image src={post.image || "/placeholder.svg"} alt="Post image" fill className="object-cover" />
+
+        {/* Double-tap heart animation */}
+        {isAnimating && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <Heart
+              className={`w-20 h-20 text-white fill-red-500 animate-ping ${isAnimating ? "opacity-100" : "opacity-0"}`}
+              style={{
+                animation: "heartPop 0.3s ease-out",
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Post Actions */}
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={() => setIsLiked(!isLiked)} className="p-0 h-auto">
-              <Heart className={`w-6 h-6 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLike}
+              className={`p-0 h-auto transition-transform duration-150 ${isAnimating ? "scale-125" : "scale-100"} hover:scale-110`}
+            >
+              <Heart
+                className={`w-6 h-6 transition-all duration-200 ${
+                  isLiked ? "fill-red-500 text-red-500 scale-110" : "hover:text-gray-600 dark:hover:text-gray-300"
+                }`}
+              />
             </Button>
-            <Button variant="ghost" size="sm" className="p-0 h-auto" onClick={handleCommentClick}>
-              <MessageCircle className="w-6 h-6" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-0 h-auto hover:scale-110 transition-transform"
+              onClick={handleCommentClick}
+            >
+              <MessageCircle className="w-6 h-6 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
             </Button>
-            <Button variant="ghost" size="sm" className="p-0 h-auto">
-              <Send className="w-6 h-6" />
+            <Button variant="ghost" size="sm" className="p-0 h-auto hover:scale-110 transition-transform">
+              <Send className="w-6 h-6 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
             </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setIsSaved(!isSaved)} className="p-0 h-auto">
-            <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current" : ""}`} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSaved(!isSaved)}
+            className="p-0 h-auto hover:scale-110 transition-transform"
+          >
+            <Bookmark
+              className={`w-6 h-6 transition-all duration-200 ${
+                isSaved ? "fill-current" : "hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            />
           </Button>
         </div>
 
         {/* Likes */}
-        <div className="font-semibold text-sm mb-2">{post.likes.toLocaleString()} likes</div>
+        <div className="font-semibold text-sm mb-2">{likes === 1 ? "1 like" : `${likes.toLocaleString()} likes`}</div>
 
         {/* Caption */}
         <div className="text-sm mb-2">
@@ -131,7 +175,7 @@ export function Post({ post }: PostProps) {
         {/* Comments */}
         <div className="text-sm text-muted-foreground mb-2">
           <button onClick={handleCommentClick} className="hover:underline">
-            {showComments ? "Hide" : "View all"} {post.comments} comments
+            {/* {showComments ? "Hide" : "View all"} {post.comments} comments */}
           </button>
         </div>
 
@@ -152,13 +196,30 @@ export function Post({ post }: PostProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="text-blue-500 font-semibold p-0 h-auto"
+            className="text-blue-500 font-semibold p-0 h-auto hover:text-blue-600 transition-colors"
             onClick={handleCommentInputFocus}
           >
             Post
           </Button>
         </div>
       </CardContent>
+
+      <style jsx>{`
+        @keyframes heartPop {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </Card>
   )
 }

@@ -1,38 +1,53 @@
+# serializers.py
 from rest_framework import serializers
-from django.templatetags.static import static
-from comments.models import Comment
+from .models import Comment
+from users.serializers import ProfileShortSerializer
+
+class ReplySerializer(serializers.ModelSerializer):
+    user = ProfileShortSerializer(source='user.profile',read_only=True)
+    timeAgo = serializers.SerializerMethodField()
+    likes = serializers.IntegerField(source='likes_count', read_only=True)
+    is_liked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'text', 'likes', 'is_liked', 'timeAgo']
+
+    def get_timeAgo(self, obj):
+        from django.utils.timesince import timesince
+        return timesince(obj.time_created) + " ago"
+    
+    def get_is_liked(self, obj):
+        request = self.context.get('request', None)
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            return obj.likes.filter(id=user.id).exists()
+        return False
+
 
 class CommentSerializer(serializers.ModelSerializer):
-    username = serializers.SerializerMethodField()
-    user_profile_image = serializers.SerializerMethodField()
-    is_owner = serializers.SerializerMethodField()
+    user = ProfileShortSerializer(source='user.profile',read_only=True)
+    replies = serializers.SerializerMethodField()
+    timeAgo = serializers.SerializerMethodField()
+    likes = serializers.IntegerField(source='likes_count', read_only=True)
+    is_liked = serializers.SerializerMethodField()
     
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'user', 'body', 'date', 'username', 'user_profile_image', 'is_owner']
-        read_only_fields = ['id', 'user', 'date']
+        fields = ['id', 'user', 'text', 'likes', 'is_liked', 'timeAgo', 'replies']
+
+    def get_replies(self, obj):
+        if obj.replies.exists():
+            return ReplySerializer(obj.replies.all(), many=True, context=self.context).data
+        return []
+
+    def get_timeAgo(self, obj):
+        from django.utils.timesince import timesince
+        return timesince(obj.time_created) + " ago"
     
-    def get_username(self, obj):
-        return obj.user.username
-    
-    def get_user_profile_image(self, obj):
-        request = self.context.get('request')
-        user = obj.user
-        if hasattr(user, 'profile') and user.profile.image:
-            url = user.profile.image.url
-        else:
-            url = static('images/default.jpg')
-        if request:
-            return request.build_absolute_uri(url)
-        return url
-    
-    def get_is_owner(self, obj):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user'):
-            return obj.user == request.user
+    def get_is_liked(self, obj):
+        request = self.context.get('request', None)
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            return obj.likes.filter(id=user.id).exists()
         return False
-    
-    def create(self, validated_data):
-        # Set the current user as the comment owner
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
