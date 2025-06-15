@@ -8,10 +8,14 @@ class ReplySerializer(serializers.ModelSerializer):
     timeAgo = serializers.SerializerMethodField()
     likes = serializers.IntegerField(source='likes_count', read_only=True)
     is_liked = serializers.SerializerMethodField()
+    
+    # THÊM 2 TRƯỜNG write-only để tạo reply
+    post = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.model.post.field.related_model.objects.all(), write_only=True)
+    parent = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), write_only=True)
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'text', 'likes', 'is_liked', 'timeAgo']
+        fields = ['id', 'user', 'text', 'likes', 'is_liked', 'timeAgo', 'parent', 'post']
 
     def get_timeAgo(self, obj):
         from django.utils.timesince import timesince

@@ -15,6 +15,7 @@ import Image from "next/image"
 import { useTheme } from "next-themes"
 import { getPostById, likePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
+import { createComment } from "@/lib/services/comments"
 
 export default function PostPage() {
   const { isAuthenticated } = useAuth()
@@ -36,20 +37,20 @@ export default function PostPage() {
   }
 
   useEffect(() => {
-  const fetchPost = async () => {
-    try {
-      const data = await getPostById(postId)
-      setPost(data)
-      setLikes(data.likes || 0)
-      setIsLiked(data.is_liked || false)
-      console.log("Fetched post:", data)
-    } catch (err) {
-      console.error("Error fetching post", err)
+    const fetchPost = async () => {
+      try {
+        const data = await getPostById(postId)
+        setPost(data)
+        setLikes(data.likes || 0)
+        setIsLiked(data.is_liked || false)
+        console.log("Fetched post:", data)
+      } catch (err) {
+        console.error("Error fetching post", err)
+      }
     }
-  }
 
-  fetchPost()
-}, [postId])
+    fetchPost()
+  }, [postId])
 
   if (!post) {
     return (
@@ -69,53 +70,51 @@ export default function PostPage() {
     )
   }
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!comment.trim()) return
-    // Add comment logic here
-    console.log("Adding comment:", comment)
-    setComment("")
-    // Trigger comment refresh in Comments component
-    window.dispatchEvent(
-      new CustomEvent("newComment", {
-        detail: {
-          postId,
-          comment: {
-            id: `c${Date.now()}`,
-            user: {
-              username: "you",
-              avatar: "/placeholder-user.jpg",
-            },
-            text: comment,
-            likes: 0,
-            timeAgo: "now",
-            replies: [],
+
+    try {
+      const newComment = await createComment(postId, comment)
+
+      // Reset input
+      setComment("")
+
+      // Dispatch event để các component khác (ví dụ: Comments component) lắng nghe và cập nhật UI
+      window.dispatchEvent(
+        new CustomEvent("newComment", {
+          detail: {
+            postId,
+            comment: newComment,
           },
-        },
-      }),
-    )
+        }),
+      )
+    } catch (error) {
+      console.error("Failed to add comment:", error)
+      // Optionally show toast hoặc alert lỗi
+    }
   }
 
   // like/unlike post function
   const handleLike = async () => {
-  // Ghi nhớ giá trị ban đầu
-  const previousLiked = isLiked
+    // Ghi nhớ giá trị ban đầu
+    const previousLiked = isLiked
 
-  // Optimistic UI update
-  setIsAnimating(true)
-  setIsLiked(!previousLiked)
-  setLikes((prev) => (previousLiked ? prev - 1 : prev + 1))
+    // Optimistic UI update
+    setIsAnimating(true)
+    setIsLiked(!previousLiked)
+    setLikes((prev) => (previousLiked ? prev - 1 : prev + 1))
 
-  try {
-    await likePost(postId)
-  } catch (err) {
-    console.error("Failed to toggle like", err)
-    // Revert UI state on error
-    setIsLiked(previousLiked)
-    setLikes((prev) => (previousLiked ? prev + 1 : prev - 1))
-  } finally {
-    setTimeout(() => setIsAnimating(false), 300)
+    try {
+      await likePost(postId)
+    } catch (err) {
+      console.error("Failed to toggle like", err)
+      // Revert UI state on error
+      setIsLiked(previousLiked)
+      setLikes((prev) => (previousLiked ? prev + 1 : prev - 1))
+    } finally {
+      setTimeout(() => setIsAnimating(false), 300)
+    }
   }
-}
 
   const handleDoubleClick = () => {
     if (!isLiked) {
@@ -239,13 +238,12 @@ export default function PostPage() {
                   className={`p-0 h-auto hover:bg-transparent transition-transform duration-150 ${isAnimating ? "scale-125" : "scale-100"} hover:scale-110`}
                 >
                   <Heart
-                    className={`w-6 h-6 transition-all duration-200 ${
-                      isLiked
+                    className={`w-6 h-6 transition-all duration-200 ${isLiked
                         ? "fill-red-500 text-red-500 scale-110"
                         : isDark
                           ? "text-white hover:text-gray-300"
                           : "text-black hover:text-gray-600"
-                    }`}
+                      }`}
                   />
                 </Button>
                 <Button
@@ -275,15 +273,14 @@ export default function PostPage() {
                 className="p-0 h-auto hover:bg-transparent hover:scale-110 transition-transform"
               >
                 <Bookmark
-                  className={`w-6 h-6 transition-all duration-200 ${
-                    isSaved
+                  className={`w-6 h-6 transition-all duration-200 ${isSaved
                       ? isDark
                         ? "fill-white text-white"
                         : "fill-black text-black"
                       : isDark
                         ? "text-white hover:text-gray-300"
                         : "text-black hover:text-gray-600"
-                  }`}
+                    }`}
                 />
               </Button>
             </div>
@@ -311,9 +308,8 @@ export default function PostPage() {
                     handleAddComment()
                   }
                 }}
-                className={`border-0 bg-transparent p-0 focus-visible:ring-0 text-sm ${
-                  isDark ? "text-white placeholder:text-gray-400" : "text-black placeholder:text-gray-500"
-                }`}
+                className={`border-0 bg-transparent p-0 focus-visible:ring-0 text-sm ${isDark ? "text-white placeholder:text-gray-400" : "text-black placeholder:text-gray-500"
+                  }`}
               />
               {comment && (
                 <Button

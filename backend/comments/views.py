@@ -1,10 +1,11 @@
 from rest_framework import viewsets, permissions
 from .models import Comment
-from .serializers import CommentSerializer
+from .serializers import CommentSerializer, ReplySerializer
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework import serializers
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.filter(parent__isnull=True)
@@ -20,7 +21,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         return Comment.objects.all()
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        post_id = self.request.data.get('post')
+        if not post_id:
+            raise serializers.ValidationError({"post": "This field is required."})
+
+        serializer.save(user=self.request.user, post_id=post_id)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
@@ -40,8 +45,14 @@ class CommentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def replies(self, request, pk=None):
         parent_comment = self.get_object()
-        serializer = ReplySerializer(data=request.data, context={'request': request})
+
+        # Inject post_id và parent_id để ReplySerializer xử lý
+        data = request.data.copy()
+        data["post"] = str(parent_comment.post.id)
+        data["parent"] = str(parent_comment.id)
+
+        serializer = ReplySerializer(data=data, context={"request": request})
         if serializer.is_valid():
-            serializer.save(user=request.user, post=parent_comment.post, parent=parent_comment)
+            serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -45,14 +45,18 @@ export function Comments({ postId }: CommentsProps) {
   }, [postId])
 
   useEffect(() => {
-    const handleNewComment = (event: CustomEvent) => {
-      if (event.detail.postId === postId) {
-        setComments((prev: CommentType[]) => [...prev, event.detail.comment])
+    const handleNewComment = (e: CustomEvent) => {
+      const { postId: newCommentPostId, comment } = e.detail
+      if (newCommentPostId === postId) {
+        setComments((prev) => [...prev, comment]) 
       }
     }
 
     window.addEventListener("newComment", handleNewComment as EventListener)
-    return () => window.removeEventListener("newComment", handleNewComment as EventListener)
+
+    return () => {
+      window.removeEventListener("newComment", handleNewComment as EventListener)
+    }
   }, [postId])
 
   const handleAddReply = async (commentId: number) => {
