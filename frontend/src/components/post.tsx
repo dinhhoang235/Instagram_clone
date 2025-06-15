@@ -21,7 +21,6 @@ export function Post({ post }: PostProps) {
   const [isLiked, setIsLiked] = useState(post.is_liked)
   const [isSaved, setIsSaved] = useState(false)
   const [comment, setComment] = useState("")
-  // const [showComments, setShowComments] = useState(false)
   const [likes, setLikes] = useState(post.likes)
   const [isAnimating, setIsAnimating] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
@@ -175,17 +174,20 @@ export function Post({ post }: PostProps) {
         <div className="font-semibold text-sm mb-2">{likes === 1 ? "1 like" : `${likes.toLocaleString()} likes`}</div>
 
         {/* Caption */}
-        <div className="text-sm mb-2">
+        <div className="text-sm mb-0">
           <Link href={`/${post.user.username}`} className="font-semibold mr-2">
             {post.user.username}
           </Link>
           <span>{post.caption}</span>
         </div>
 
+        {/* hashtags */}
+        {post.hashtags && <div className="mt-0 mb-2 text-sm text-blue-500">{post.hashtags}</div>}
+
         {/* Comments */}
         <div className="text-sm text-muted-foreground mb-2">
           <button onClick={handleCommentClick} className="hover:underline">
-            {/* {showComments ? "Hide" : "View all"} {post.comments} comments */}
+            View all {post.comments} comments
           </button>
         </div>
 
@@ -230,6 +232,6 @@ export function Post({ post }: PostProps) {
           }
         }
       `}</style>
-    </Card>
+    </Card >
   )
 }
