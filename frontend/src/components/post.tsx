@@ -11,13 +11,14 @@ import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeChec
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 import { PostType } from "@/types/post"
+import { likePost } from "@/lib/services/posts"
 
 interface PostProps {
   post: PostType
 }
 
 export function Post({ post }: PostProps) {
-  const [isLiked, setIsLiked] = useState(false)
+  const [isLiked, setIsLiked] = useState(post.is_liked)
   const [isSaved, setIsSaved] = useState(false)
   const [comment, setComment] = useState("")
   // const [showComments, setShowComments] = useState(false)
@@ -40,12 +41,23 @@ export function Post({ post }: PostProps) {
     router.push(`/post/${post.id}`)
   }
 
-  const handleLike = () => {
+  const handleLike = async () => {
     setIsAnimating(true)
-    setIsLiked(!isLiked)
+
+    // Cập nhật UI trước (optimistic update)
+    setIsLiked((prev) => !prev)
     setLikes((prev) => (isLiked ? prev - 1 : prev + 1))
 
-    // Reset animation after a short delay
+    try {
+      await likePost(post.id) // Backend tự xử lý toggle like/unlike
+    } catch (error) {
+      console.error("Failed to toggle like", error)
+
+      // Nếu lỗi thì rollback lại trạng thái UI
+      setIsLiked((prev) => !prev)
+      setLikes((prev) => (isLiked ? prev + 1 : prev - 1))
+    }
+
     setTimeout(() => setIsAnimating(false), 300)
   }
 
@@ -130,9 +142,8 @@ export function Post({ post }: PostProps) {
               className={`p-0 h-auto transition-transform duration-150 ${isAnimating ? "scale-125" : "scale-100"} hover:scale-110`}
             >
               <Heart
-                className={`w-6 h-6 transition-all duration-200 ${
-                  isLiked ? "fill-red-500 text-red-500 scale-110" : "hover:text-gray-600 dark:hover:text-gray-300"
-                }`}
+                className={`w-6 h-6 transition-all duration-200 ${isLiked ? "fill-red-500 text-red-500 scale-110" : "hover:text-gray-600 dark:hover:text-gray-300"
+                  }`}
               />
             </Button>
             <Button
@@ -154,9 +165,8 @@ export function Post({ post }: PostProps) {
             className="p-0 h-auto hover:scale-110 transition-transform"
           >
             <Bookmark
-              className={`w-6 h-6 transition-all duration-200 ${
-                isSaved ? "fill-current" : "hover:text-gray-600 dark:hover:text-gray-300"
-              }`}
+              className={`w-6 h-6 transition-all duration-200 ${isSaved ? "fill-current" : "hover:text-gray-600 dark:hover:text-gray-300"
+                }`}
             />
           </Button>
         </div>

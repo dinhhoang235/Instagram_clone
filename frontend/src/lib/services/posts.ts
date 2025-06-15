@@ -7,9 +7,9 @@ export const getPostById = async (id: string | number): Promise<PostType> => {
   return res.data
 }
 
-export const getPost = async (formData: FormData): Promise<PostType> => {
-  const res = await api.post<PostType>(`/posts/`, formData)
-  return res.data
+export const getPosts = async (): Promise<PostType[]> => {
+  const res = await api.get<{ results: PostType[] }>("/posts/")
+  return res.data.results
 }
 
 // Like and unlike a post
