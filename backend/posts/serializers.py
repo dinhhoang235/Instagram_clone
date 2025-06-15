@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from posts.models import Post 
+from posts.models import Post, Tag
 from django.contrib.auth.models import User
+import re
 
 
 class PostUserSerializer(serializers.ModelSerializer):
@@ -45,10 +46,12 @@ class PostSerializer(serializers.ModelSerializer):
         ]
 
     def get_hashtags(self, obj):
-        return " ".join(f"#{tag.name}" for tag in obj.tags.all())
-    
+        return [tag.name for tag in obj.tags.all()]
+
     def get_is_liked(self, obj):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return obj.likes.filter(id=request.user.id).exists()
         return False
+    
+    

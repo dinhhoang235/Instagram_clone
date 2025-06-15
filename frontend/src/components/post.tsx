@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useRouter } from "next/navigation"
 import { PostType } from "@/types/post"
 import { likePost } from "@/lib/services/posts"
+import { renderCaptionWithTags } from "@/components/tag"
 
 interface PostProps {
   post: PostType
@@ -173,16 +174,15 @@ export function Post({ post }: PostProps) {
         {/* Likes */}
         <div className="font-semibold text-sm mb-2">{likes === 1 ? "1 like" : `${likes.toLocaleString()} likes`}</div>
 
-        {/* Caption */}
-        <div className="text-sm mb-0">
+        {/* Caption + Hashtags gộp */}
+        <div className="text-sm mb-2">
           <Link href={`/${post.user.username}`} className="font-semibold mr-2">
             {post.user.username}
           </Link>
-          <span>{post.caption}</span>
+          {renderCaptionWithTags(post.caption)}
         </div>
 
-        {/* hashtags */}
-        {post.hashtags && <div className="mt-0 mb-2 text-sm text-blue-500">{post.hashtags}</div>}
+
 
         {/* Comments */}
         <div className="text-sm text-muted-foreground mb-2">

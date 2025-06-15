@@ -16,6 +16,7 @@ import { useTheme } from "next-themes"
 import { getPostById, likePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
 import { createComment } from "@/lib/services/comments"
+import { renderCaptionWithTags } from "@/components/tag"
 
 export default function PostPage() {
   const { isAuthenticated } = useAuth()
@@ -214,9 +215,10 @@ export default function PostPage() {
                   >
                     {post.user.username}
                   </Link>
-                  <span className={isDark ? "text-white" : "text-black"}>{post.caption}</span>
+                  <span className={isDark ? "text-white" : "text-black"}>
+                    {renderCaptionWithTags(post.caption)}
+                  </span>
                 </div>
-                {post.hashtags && <div className="mt-2 text-sm text-blue-500">{post.hashtags}</div>}
                 <p className={`text-xs mt-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{post.timeAgo}</p>
               </div>
             </div>
@@ -239,10 +241,10 @@ export default function PostPage() {
                 >
                   <Heart
                     className={`w-6 h-6 transition-all duration-200 ${isLiked
-                        ? "fill-red-500 text-red-500 scale-110"
-                        : isDark
-                          ? "text-white hover:text-gray-300"
-                          : "text-black hover:text-gray-600"
+                      ? "fill-red-500 text-red-500 scale-110"
+                      : isDark
+                        ? "text-white hover:text-gray-300"
+                        : "text-black hover:text-gray-600"
                       }`}
                   />
                 </Button>
@@ -274,12 +276,12 @@ export default function PostPage() {
               >
                 <Bookmark
                   className={`w-6 h-6 transition-all duration-200 ${isSaved
-                      ? isDark
-                        ? "fill-white text-white"
-                        : "fill-black text-black"
-                      : isDark
-                        ? "text-white hover:text-gray-300"
-                        : "text-black hover:text-gray-600"
+                    ? isDark
+                      ? "fill-white text-white"
+                      : "fill-black text-black"
+                    : isDark
+                      ? "text-white hover:text-gray-300"
+                      : "text-black hover:text-gray-600"
                     }`}
                 />
               </Button>

@@ -7,7 +7,7 @@ export interface PostType {
   }
   image: string
   caption: string
-  hashtags?: string
+  hashtags?: string[]
   likes: number
   is_liked: boolean
   comments: number
