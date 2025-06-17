@@ -9,7 +9,7 @@ from comments.views import CommentViewSet
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
-router.register(r'posts', PostViewSet)
+router.register(r'posts', PostViewSet, basename='posts')
 router.register(r'users', UserViewSet)
 router.register(r'profiles', ProfileViewSet)
 router.register(r'comments', CommentViewSet)

@@ -170,16 +170,22 @@ class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     avatar = serializers.SerializerMethodField()
+    posts_count = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
+    is_self = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
         fields = [
             'username', 'email',
             'full_name', 'bio', 'website', 'phone_number', 'gender',
-            'avatar',
-            'is_verified',
+            'avatar', 'is_verified',
             'is_private', 'allow_tagging', 'show_activity', 'allow_story_resharing',
             'allow_comments', 'allow_messages',
+            'posts_count', 'followers_count', 'following_count',
+            'is_following', 'is_self',
         ]
     
     def get_avatar(self, obj):
@@ -188,6 +194,23 @@ class ProfileSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(url) 
         return url
+    
+    def get_posts_count(self, obj):
+        return obj.get_post_count
+    
+    def get_followers_count(self, obj):
+        return obj.get_follower_count
+    
+    def get_following_count(self, obj):
+        return obj.get_following_count
+    
+    def get_is_following(self, obj):
+        request_user = self.context.get('request').user
+        return obj.is_following(request_user) if request_user.is_authenticated else False
+    
+    def get_is_self(self, obj):
+        request_user = self.context.get('request').user
+        return obj.is_self(request_user) if request_user.is_authenticated else False
 
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)

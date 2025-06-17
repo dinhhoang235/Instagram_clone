@@ -93,43 +93,34 @@ class ProfileViewSet(viewsets.ModelViewSet):
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        return Profile.objects.all()
-
-    def get_object(self):
-        return self.request.user.profile
-
     def retrieve(self, request, pk=None):
         if pk == "me":
             profile = self.request.user.profile
         else:
             user = get_object_or_404(User, username=pk)
             profile = user.profile
-        serializer = self.get_serializer(profile)
+        serializer = self.get_serializer(profile, context={'request': request})
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         profile = self.request.user.profile
-        serializer = self.get_serializer(profile, data=request.data, partial=True)
+        serializer = self.get_serializer(profile, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     def follow(self, request, pk=None):
         to_follow = get_object_or_404(User, username=pk)
-        user = request.user
-        if user == to_follow:
+        if request.user == to_follow:
             return Response({"detail": "You cannot follow yourself."}, status=400)
-
-        Follow.objects.get_or_create(follower=user, following=to_follow)
+        Follow.objects.get_or_create(follower=request.user, following=to_follow)
         return Response({"detail": "Followed."})
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     def unfollow(self, request, pk=None):
         to_unfollow = get_object_or_404(User, username=pk)
-        user = request.user
-        Follow.objects.filter(follower=user, following=to_unfollow).delete()
+        Follow.objects.filter(follower=request.user, following=to_unfollow).delete()
         return Response({"detail": "Unfollowed."})
 
     @action(detail=True, methods=["get"])
@@ -137,7 +128,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
         user = get_object_or_404(User, username=pk)
         followers = User.objects.filter(following__following=user)
         profiles = Profile.objects.filter(user__in=followers)
-        serializer = ProfileShortSerializer(profiles, many=True)
+        serializer = ProfileShortSerializer(profiles, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=["get"])
@@ -145,5 +136,5 @@ class ProfileViewSet(viewsets.ModelViewSet):
         user = get_object_or_404(User, username=pk)
         following = User.objects.filter(followers__follower=user)
         profiles = Profile.objects.filter(user__in=following)
-        serializer = ProfileShortSerializer(profiles, many=True)
+        serializer = ProfileShortSerializer(profiles, many=True, context={'request': request})
         return Response(serializer.data)

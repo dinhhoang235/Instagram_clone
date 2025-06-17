@@ -65,6 +65,12 @@ class Profile(models.Model):
     @property
     def get_following_count(self):
         return self.user.following.count()
+    
+    def is_self(self, request_user):
+        return self.user == request_user
+    
+    def is_following(self, request_user):
+        return self.user.followers.filter(id=request_user.id).exists() if request_user.is_authenticated else False
 
 
 class Follow(models.Model):

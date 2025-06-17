@@ -5,9 +5,15 @@ from posts.serializers import PostSerializer
 from rest_framework.response import Response
 
 class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all().select_related('user', 'user__profile').prefetch_related('tags', 'likes')
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    
+    def get_queryset(self):
+        queryset = Post.objects.all().select_related('user', 'user__profile').prefetch_related('tags', 'likes')
+        user = self.request.query_params.get('user')
+        if user:
+            queryset = queryset.filter(user__username=user)
+        return queryset
     
     def get_serializer_context(self):
         return {'request': self.request}
