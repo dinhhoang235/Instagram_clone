@@ -10,6 +10,7 @@ export type ProfileType = {
     phone_number: string
     gender: GenderOption
     avatar: string
+    avatarFile?: File
     is_verified: boolean
     is_private: boolean
     allow_tagging: boolean
@@ -21,6 +22,6 @@ export type ProfileType = {
     followers_count: number
     following_count: number
 }
-export type UpdateProfileInput = Partial<Omit<ProfileType, 'username' | 'email' | 'avatar'>> & {
-    avatar?: File | string
+export type UpdateProfileInput = Partial<Omit<ProfileType,'username' | 'email' | 'avatar' >> & {
+  avatarFile?: File
 }

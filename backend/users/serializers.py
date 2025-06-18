@@ -170,6 +170,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     avatar = serializers.SerializerMethodField()
+    avatarFile = serializers.ImageField(write_only=True, required=False)
     posts_count = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
@@ -181,7 +182,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = [
             'username', 'email',
             'full_name', 'bio', 'website', 'phone_number', 'gender',
-            'avatar', 'is_verified',
+            'avatar', 'avatarFile', 'is_verified',
             'is_private', 'allow_tagging', 'show_activity', 'allow_story_resharing',
             'allow_comments', 'allow_messages',
             'posts_count', 'followers_count', 'following_count',
@@ -194,6 +195,23 @@ class ProfileSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(url) 
         return url
+    
+    def update(self, instance, validated_data):
+        avatar_file = validated_data.pop('avatarFile', None)
+
+        if validated_data.get('avatar') in [None, ""]:
+            instance.avatar.delete(save=False)
+            instance.avatar = None
+            validated_data.pop('avatar', None) 
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if avatar_file:
+            instance.avatar = avatar_file
+
+        instance.save()
+        return instance
     
     def get_posts_count(self, obj):
         return obj.get_post_count

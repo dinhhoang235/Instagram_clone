@@ -11,9 +11,14 @@ export async function getUserProfile(username: string): Promise<ProfileType> {
   return res.data
 }
 
-export async function updateMyProfile(data: UpdateProfileInput): Promise<ProfileType> {
-  const res = await api.patch<ProfileType>("/profiles/me/", data)
-  return res.data
+export async function updateMyProfile(data: UpdateProfileInput | FormData): Promise<ProfileType> {
+  const isFormData = data instanceof FormData;
+
+  const res = await api.patch<ProfileType>("/profiles/me/", data, {
+    headers: isFormData ? {} : { "Content-Type": "application/json" },
+  });
+
+  return res.data;
 }
 
 export async function followUser(username: string): Promise<{ detail: string }> {

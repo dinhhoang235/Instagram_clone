@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from users.models import Profile, Follow
 from users.serializers import (
@@ -92,22 +93,14 @@ class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.select_related('user').all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser] # Allow file uploads
 
-    def retrieve(self, request, pk=None):
+    def get_object(self):
+        pk = self.kwargs.get("pk")
         if pk == "me":
-            profile = self.request.user.profile
-        else:
-            user = get_object_or_404(User, username=pk)
-            profile = user.profile
-        serializer = self.get_serializer(profile, context={'request': request})
-        return Response(serializer.data)
-
-    def update(self, request, *args, **kwargs):
-        profile = self.request.user.profile
-        serializer = self.get_serializer(profile, data=request.data, partial=True, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+            return self.request.user.profile
+        user = get_object_or_404(User, username=pk)
+        return user.profile
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     def follow(self, request, pk=None):

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,9 @@ import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/components/auth-provider"
 import { redirect } from "next/navigation"
 import { Camera, X, Eye, EyeOff, Globe, Lock, Users } from "lucide-react"
+import type { GenderOption, AllowOption, UpdateProfileInput } from "@/types/profile"
+import { getMyProfile, updateMyProfile } from "@/lib/services/profile"
+import { changePassword } from "@/lib/services/auth"
 
 export default function EditProfilePage() {
   const { isAuthenticated } = useAuth()
@@ -29,14 +32,15 @@ export default function EditProfilePage() {
 
   // Profile form state
   const [profileData, setProfileData] = useState({
-    username: "john_doe",
-    name: "John Doe",
-    bio: "📸 Photographer & Content Creator\n🌍 Traveling the world\n📧 john@example.com",
-    website: "www.johndoe.com",
-    email: "john@example.com",
-    phoneNumber: "+1 (555) 123-4567",
-    gender: "prefer-not-to-say",
-    avatar: "/placeholder-user.jpg",
+    username: "",
+    name: "",
+    bio: "",
+    website: "",
+    email: "",
+    phoneNumber: "",
+    gender: "other" as GenderOption,
+    avatar: "/placeholder-user.jpg" as string,
+    avatarFile: null as File | null,
   })
 
   // Privacy settings state
@@ -45,8 +49,8 @@ export default function EditProfilePage() {
     allowTagging: true,
     showActivity: true,
     allowStoryResharing: true,
-    allowComments: "everyone",
-    allowMessages: "everyone",
+    allowComments: "everyone" as AllowOption,
+    allowMessages: "everyone" as AllowOption,
   })
 
   // Password change state
@@ -65,15 +69,72 @@ export default function EditProfilePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("profile")
 
+  // load profile from API
+  useEffect(() => {
+    async function fetchProfile() {
+      const profile = await getMyProfile()
+      setProfileData((prev) => ({
+        ...prev,
+        username: profile.username,
+        name: profile.full_name,
+        bio: profile.bio || "",
+        website: profile.website || "",
+        email: profile.email || "",
+        phoneNumber: profile.phone_number || "",
+        gender: profile.gender ?? "other",
+        avatar: profile.avatar || "/placeholder-user.jpg",
+        avatarFile: profile.avatarFile || null,
+      }))
+      setPrivacySettings({
+        isPrivate: profile.is_private,
+        allowTagging: profile.allow_tagging,
+        showActivity: profile.show_activity,
+        allowStoryResharing: profile.allow_story_resharing,
+        allowComments: profile.allow_comments || "everyone",
+        allowMessages: profile.allow_messages || "everyone",
+      })
+    }
+    fetchProfile()
+  }, [])
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Profile updated:", profileData)
-      // Show success message or redirect
+      const formData = new FormData()
+      formData.append("full_name", profileData.name)
+      formData.append("bio", profileData.bio)
+      formData.append("website", profileData.website)
+      formData.append("phone_number", profileData.phoneNumber)
+      formData.append("gender", profileData.gender)
+
+      // Nếu có avatarFile thì append
+      if (profileData.avatarFile) {
+        formData.append("avatarFile", profileData.avatarFile)
+      }
+
+      // Các trường privacy
+      formData.append("is_private", String(privacySettings.isPrivate))
+      formData.append("allow_tagging", String(privacySettings.allowTagging))
+      formData.append("show_activity", String(privacySettings.showActivity))
+      formData.append("allow_story_resharing", String(privacySettings.allowStoryResharing))
+      formData.append("allow_comments", privacySettings.allowComments)
+      formData.append("allow_messages", privacySettings.allowMessages)
+
+      const updated = await updateMyProfile(formData)
+
+      setProfileData((prev) => ({
+        ...prev,
+        name: updated.full_name ?? "",
+        bio: updated.bio ?? "",
+        website: updated.website ?? "",
+        phoneNumber: updated.phone_number ?? "",
+        gender: updated.gender ?? "other",
+        avatar: updated.avatar ?? "/placeholder-user.jpg",
+        avatarFile: null,
+      }))
+      alert("Profile updated successfully")
     } catch (error) {
       console.error("Failed to update profile:", error)
     } finally {
@@ -81,14 +142,21 @@ export default function EditProfilePage() {
     }
   }
 
+
   const handlePrivacySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Privacy settings updated:", privacySettings)
+      const payload: UpdateProfileInput = {
+        is_private: privacySettings.isPrivate,
+        allow_tagging: privacySettings.allowTagging,
+        show_activity: privacySettings.showActivity,
+        allow_story_resharing: privacySettings.allowStoryResharing,
+        allow_comments: privacySettings.allowComments,
+        allow_messages: privacySettings.allowMessages,
+      }
+
+      await updateMyProfile(payload)
     } catch (error) {
       console.error("Failed to update privacy settings:", error)
     } finally {
@@ -97,40 +165,82 @@ export default function EditProfilePage() {
   }
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("New passwords don't match")
-      return
-    }
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
 
-    setIsLoading(true)
+    if (!currentPassword) return alert("Please enter your current password");
+    if (!newPassword) return alert("Please enter a new password");
+    if (newPassword !== confirmPassword) return alert("New passwords don't match");
+
+    setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Password updated")
-      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+      await changePassword(currentPassword, newPassword, confirmPassword);
+      alert("Password changed successfully");
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
-      console.error("Failed to update password:", error)
+      const err = error as {
+        response?: {
+          data?: {
+            detail?: string;
+            old_password?: string[];
+            new_password?: string[];
+            confirm_password?: string[];
+            [key: string]: unknown;
+          };
+        };
+      };
+
+      const data = err.response?.data;
+      const message =
+        data?.detail ||
+        data?.old_password?.[0] ||
+        data?.new_password?.[0] ||
+        data?.confirm_password?.[0] ||
+        (typeof data === "object" ? Object.values(data)[0] : null) ||
+        "Something went wrong";
+
+      alert(Array.isArray(message) ? message[0] : message);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
       const reader = new FileReader()
       reader.onload = (e) => {
-        setProfileData({ ...profileData, avatar: e.target?.result as string })
+        setProfileData((prev) => ({
+          ...prev,
+          avatar: e.target?.result as string,
+          avatarFile: file,
+        }))
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const removeAvatar = () => {
-    setProfileData({ ...profileData, avatar: "" })
+
+  const removeAvatar = async () => {
+    setIsLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append("avatar", "") 
+
+      const updated = await updateMyProfile(formData)
+
+      setProfileData((prev) => ({
+        ...prev,
+        avatar: updated.avatar,
+        avatarFile: null,
+      }))
+    } catch (error) {
+      console.error("Failed to remove avatar:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -174,19 +284,17 @@ export default function EditProfilePage() {
                               variant="destructive"
                               size="sm"
                               className="absolute -top-2 -right-2 rounded-full w-6 h-6 p-0"
-                              onClick={removeAvatar}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeAvatar();
+                              }}
                             >
                               <X className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="avatar-upload" className="cursor-pointer">
-                            <Button type="button" variant="outline" className="cursor-pointer">
-                              <Camera className="w-4 h-4 mr-2" />
-                              Change Photo
-                            </Button>
-                          </Label>
                           <Input
                             id="avatar-upload"
                             type="file"
@@ -194,6 +302,20 @@ export default function EditProfilePage() {
                             className="hidden"
                             onChange={handleAvatarChange}
                           />
+                          <Label htmlFor="avatar-upload" className="cursor-pointer">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="cursor-pointer"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                document.getElementById("avatar-upload")?.click()
+                              }}
+                            >
+                              <Camera className="w-4 h-4 mr-2" />
+                              Change Photo
+                            </Button>
+                          </Label>
                           <p className="text-sm text-muted-foreground">
                             Recommended: Square JPG, PNG, or GIF, at least 320 pixels wide and tall.
                           </p>
@@ -264,7 +386,7 @@ export default function EditProfilePage() {
                           <Label htmlFor="gender">Gender</Label>
                           <Select
                             value={profileData.gender}
-                            onValueChange={(value) => setProfileData({ ...profileData, gender: value })}
+                            onValueChange={(value) => setProfileData({ ...profileData, gender: value as GenderOption })}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select gender" />
@@ -272,8 +394,7 @@ export default function EditProfilePage() {
                             <SelectContent>
                               <SelectItem value="male">Male</SelectItem>
                               <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="custom">Custom</SelectItem>
-                              <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -382,7 +503,7 @@ export default function EditProfilePage() {
                           <p className="text-sm text-muted-foreground">Control who can comment on your posts.</p>
                           <Select
                             value={privacySettings.allowComments}
-                            onValueChange={(value) => setPrivacySettings({ ...privacySettings, allowComments: value })}
+                            onValueChange={(value) => setPrivacySettings({ ...privacySettings, allowComments: value as AllowOption })}
                           >
                             <SelectTrigger className="w-full md:w-48">
                               <SelectValue />
@@ -400,7 +521,7 @@ export default function EditProfilePage() {
                                   People you follow
                                 </div>
                               </SelectItem>
-                              <SelectItem value="off">
+                              <SelectItem value="no_one">
                                 <div className="flex items-center">
                                   <Lock className="w-4 h-4 mr-2" />
                                   Off
@@ -417,7 +538,7 @@ export default function EditProfilePage() {
                           <p className="text-sm text-muted-foreground">Control who can send you direct messages.</p>
                           <Select
                             value={privacySettings.allowMessages}
-                            onValueChange={(value) => setPrivacySettings({ ...privacySettings, allowMessages: value })}
+                            onValueChange={(value) => setPrivacySettings({ ...privacySettings, allowMessages: value as AllowOption })}
                           >
                             <SelectTrigger className="w-full md:w-48">
                               <SelectValue />
@@ -435,7 +556,7 @@ export default function EditProfilePage() {
                                   People you follow
                                 </div>
                               </SelectItem>
-                              <SelectItem value="off">
+                              <SelectItem value="no_one">
                                 <div className="flex items-center">
                                   <Lock className="w-4 h-4 mr-2" />
                                   Off

@@ -56,3 +56,12 @@ export async function getCurrentUser(): Promise<User> {
     const res = await api.get<User>("/users/me/")
     return res.data
 }
+
+// change password
+export async function changePassword(oldPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
+  await api.post("/users/change_password/", {
+    old_password: oldPassword,
+    new_password: newPassword,
+    confirm_password: confirmPassword,
+  });
+}
