@@ -34,5 +34,8 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def get_postImage(self, obj):
         if obj.post and obj.post.image:
-            return obj.post.image.url
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.post.image.url)
+            return obj.post.image.url  # fallback nếu không có request
         return None
