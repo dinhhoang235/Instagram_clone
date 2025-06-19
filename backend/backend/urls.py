@@ -30,6 +30,8 @@ urlpatterns = [
     path('api/register/', UserRegistrationView.as_view(), name='user_register'),
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),  # login
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  # refresh token
+    
+    path('api/chats/', include('chats.urls')),
 ]
 
 # This is used for

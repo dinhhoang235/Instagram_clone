@@ -8,17 +8,19 @@ while ! nc -z db 3306; do
 done
 echo "MySQL started"
 
-echo "Make database migrations..."
+echo "Making database migrations..."
 python manage.py makemigrations
 
-# Apply database migrations
 echo "Applying database migrate..."
 python manage.py migrate
 
-# Run setup script to create superuser and initial data
-echo "Running setup script..."
-python setup_project.py
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
 
-# Start server
-echo "Starting server..."
-exec python manage.py runserver 0.0.0.0:8000
+if [ -f setup_project.py ]; then
+  echo "Running setup script..."
+  python setup_project.py
+fi
+
+echo "Starting Daphne server..."
+exec daphne backend.asgi:application --bind 0.0.0.0 --port 8000

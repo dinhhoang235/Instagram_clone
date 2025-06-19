@@ -44,8 +44,13 @@ class CustomTokenObtainPairSerializer(serializers.Serializer):
 
     @classmethod
     def get_token(cls, user):
-        from rest_framework_simplejwt.tokens import RefreshToken
-        return RefreshToken.for_user(user)
+        token = RefreshToken.for_user(user)
+        
+        token['user_id'] = user.id 
+        token['username'] = user.username
+        token['email'] = user.email
+        
+        return token
     
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
