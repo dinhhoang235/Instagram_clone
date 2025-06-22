@@ -32,3 +32,23 @@ export function createChatSocket(chatId: number): WebSocket {
 
     return socket;
 }
+
+export function createConversationsSocket(): WebSocket {
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const host = process.env.NEXT_PUBLIC_WS_HOST || window.location.host;
+
+  let token = '';
+  try {
+    token = localStorage.getItem("access_token") || "";
+  } catch (error) {
+    console.error("Failed to get token:", error);
+  }
+
+  const url = `${protocol}://${host}/ws/conversations/${token ? `?token=${token}` : ''}`;
+  const socket = new WebSocket(url);
+
+  socket.onopen = () => console.log("Connected to Conversations WebSocket");
+  socket.onerror = (err) => console.error("WebSocket error:", err);
+
+  return socket;
+}

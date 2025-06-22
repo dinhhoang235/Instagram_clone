@@ -45,6 +45,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "time": localtime(message.timestamp).strftime("%I:%M %p").lstrip("0"),  # đúng giờ VN
             "sender": user.username,
         }
+        
+    @sync_to_async
+    def get_thread_users(self):
+        return list(Thread.objects.get(id=self.thread_id).users.all())
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -66,6 +70,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 **payload,
             }
         )
+        
+        users = await self.get_thread_users()
+        for u in users:
+            await self.channel_layer.group_send(
+                f"conversations_{u.id}",
+                {
+                    "type": "chat_update",
+                    "chat_id": self.thread_id,
+                    "message": payload["text"],
+                    "sender": payload["sender"],
+                    "timestamp": datetime.now().isoformat()
+                }
+            )
 
     async def chat_message(self, event):
         event_copy = dict(event)
@@ -81,3 +98,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         event_copy.pop("type", None)
         await self.send(text_data=json.dumps(event_copy))
+        
+        
+class ConversationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        user = self.scope["user"]
+        if user.is_anonymous:
+            await self.close(code=4001)
+            return
+
+        self.room_group_name = f"conversations_{user.id}"
+
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+    async def chat_update(self, event):
+        await self.send(text_data=json.dumps(event))
