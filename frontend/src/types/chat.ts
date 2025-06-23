@@ -16,11 +16,11 @@ export interface ChatProps {
 export interface MessageListType {
     id: number
     username: string
-    avatar: string
+    avatar: string | null 
     lastMessage: string
     time: string
     unread: boolean
-    online: boolean
+    online?: boolean
 }
 
 export interface PaginatedResponse<T> {

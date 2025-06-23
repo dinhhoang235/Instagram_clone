@@ -2,32 +2,34 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 from .models import Message, Thread
 from asgiref.sync import sync_to_async
+from django.utils.timezone import localtime
 from django.contrib.auth.models import AnonymousUser
 from datetime import datetime
-from django.utils.timezone import localtime
+import logging
 
+logger = logging.getLogger("django")
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.thread_id = self.scope['url_route']['kwargs']['thread_id']
         self.room_group_name = f'chat_{self.thread_id}'
-
         user = self.scope["user"]
+
         if user.is_anonymous:
-            await self.close(code=4001)  # unauthorized
+            await self.close(code=4001)
             return
 
-        # (Optional) kiểm tra user có trong thread không
         thread_exists = await sync_to_async(Thread.objects.filter(id=self.thread_id, users=user).exists)()
         if not thread_exists:
-            await self.close(code=4003)  # forbidden
+            await self.close(code=4003)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     @sync_to_async
     def save_message(self, user, text):
@@ -36,16 +38,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
             sender=user,
             text=text,
         )
-        
-        print(">>> Raw timestamp (UTC):", message.timestamp)
-        print(">>> Localtime (VN):", localtime(message.timestamp))
+        avatar = getattr(getattr(user, "profile", None), "avatar", None)
         return {
             "id": message.id,
             "text": message.text,
-            "time": localtime(message.timestamp).strftime("%I:%M %p").lstrip("0"),  # đúng giờ VN
+            "time": localtime(message.timestamp).strftime("%I:%M %p").lstrip("0"),
             "sender": user.username,
+            "sender_avatar": avatar.url if avatar else None,
+            "timestamp": localtime(message.timestamp).isoformat(),
         }
-        
+
     @sync_to_async
     def get_thread_users(self):
         return list(Thread.objects.get(id=self.thread_id).users.all())
@@ -57,10 +59,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         user = self.scope['user']
-        if user.is_anonymous:
-            await self.close(code=4001)
-            return
-
         payload = await self.save_message(user, text)
 
         await self.channel_layer.group_send(
@@ -70,7 +68,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 **payload,
             }
         )
-        
+
         users = await self.get_thread_users()
         for u in users:
             await self.channel_layer.group_send(
@@ -79,41 +77,45 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "type": "chat_update",
                     "chat_id": self.thread_id,
                     "message": payload["text"],
-                    "sender": payload["sender"],
-                    "timestamp": datetime.now().isoformat()
+                    "sender": {
+                        "username": user.username,
+                        "avatar": payload["sender_avatar"]
+                    },
+                    "timestamp": payload["timestamp"],
+                    "is_sender": u.id == user.id
                 }
             )
 
     async def chat_message(self, event):
-        event_copy = dict(event)
-
         user = self.scope['user']
-        if not isinstance(user, AnonymousUser):
-            if user.username == event['sender']:
-                event_copy['isOwn'] = True
-            else:
-                event_copy['isOwn'] = False
-        else:
-            event_copy['isOwn'] = False  # fallback cho Anonymous
+        is_own = user.username == event.get('sender') if user and not isinstance(user, AnonymousUser) else False
+        await self.send(text_data=json.dumps({ **event, "isOwn": is_own }))
 
-        event_copy.pop("type", None)
-        await self.send(text_data=json.dumps(event_copy))
-        
-        
+
 class ConversationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        user = self.scope["user"]
-        if user.is_anonymous:
-            await self.close(code=4001)
-            return
+        try:
+            user = self.scope["user"]
+            if user.is_anonymous:
+                await self.close(code=4001)
+                return
 
-        self.room_group_name = f"conversations_{user.id}"
-
-        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
-        await self.accept()
+            self.room_group_name = f"conversations_{user.id}"
+            await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+            await self.accept()
+        except Exception as e:
+            logger.error(f"ConversationConsumer connect error: {str(e)}")
+            await self.close(code=4500)
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        try:
+            if hasattr(self, 'room_group_name'):
+                await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        except Exception as e:
+            logger.error(f"ConversationConsumer disconnect error: {str(e)}")
 
     async def chat_update(self, event):
-        await self.send(text_data=json.dumps(event))
+        try:
+            await self.send(text_data=json.dumps(event))
+        except Exception as e:
+            logger.error(f"ConversationConsumer chat_update error: {str(e)}")

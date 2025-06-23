@@ -5,91 +5,138 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Edit } from "lucide-react"
-import { getConversations } from "@/lib/services/messages"
+import { getConversations, createConversationsSocket } from "@/lib/services/messages"
+import { useConversationStore } from "@/stores/useConversationStore"
 import type { MessageListType } from "@/types/chat"
+import dayjs from "dayjs"
+import relativeTime from "dayjs/plugin/relativeTime"
+
+dayjs.extend(relativeTime)
 
 interface MessageListProps {
-    onSelectChat: (chat: MessageListType) => void
-    activeChat: MessageListType | null
+  onSelectChat: (chat: MessageListType) => void
+  activeChat: MessageListType | null
 }
 
 export function MessageList({ onSelectChat, activeChat }: MessageListProps) {
-    const [conversations, setConversations] = useState<MessageListType[]>([])
-    const [search, setSearch] = useState("")
+  const [search, setSearch] = useState("")
+  const { conversations, setConversations, updateConversation, markAsRead } = useConversationStore()
 
-    useEffect(() => {
-        getConversations()
-            .then(setConversations)
-            .catch((err) => {
-                console.error("Failed to load conversations", err)
-            })
-    }, [])
+  useEffect(() => {
+    getConversations()
+      .then(setConversations)
+      .catch((err) => console.error("Failed to load conversations", err))
+  }, [setConversations])
 
-    const filtered = conversations.filter((c) =>
-        c.username.toLowerCase().includes(search.toLowerCase())
-    )
+  useEffect(() => {
+    const socket = createConversationsSocket()
 
-    return (
-        <div className="w-full md:w-80 lg:w-96 border-r">
-            {/* Header */}
-            <div className="p-4 border-b">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold">Messages</h2>
-                    <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                    </Button>
-                </div>
-                <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search messages"
-                        className="pl-8"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-            </div>
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log("WebSocket message received:", data)
+        
+        // Handle both scenarios: with type field and without type field
+        if (
+          // From Django Channels with type field retained (can happen depending on setup)
+          (data.type === "chat_update" && data.chat_id) || 
+          // From Django Channels consumer directly (type field is stripped)
+          (data.chat_id && data.message && data.timestamp && data.sender)
+        ) {
+          updateConversation({
+            chat_id: data.chat_id,
+            message: data.message,
+            timestamp: data.timestamp,
+            sender: data.sender,
+            is_sender: !!data.is_sender
+          })
+          
+          // If this is the active chat, mark it as read
+          if (activeChat && activeChat.id === data.chat_id) {
+            markAsRead(data.chat_id)
+          }
+        }
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error)
+      }
+    }
 
-            {/* List */}
-            <div className="overflow-y-auto h-[calc(100vh-10rem)]">
-                {filtered.length > 0 ? (
-                    filtered.map((convo) => (
-                        <div
-                            key={convo.id}
-                            className={`flex items-center p-4 cursor-pointer hover:bg-muted/50 ${activeChat?.id === convo.id ? "bg-muted" : ""
-                                }`}
-                            onClick={() => onSelectChat(convo)}
-                        >
-                            <div className="relative">
-                                <Avatar className="w-12 h-12">
-                                    <AvatarImage src={convo.avatar || "/placeholder.svg"} alt={convo.username} />
-                                    <AvatarFallback>{convo.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                {convo.online && (
-                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
-                                )}
-                            </div>
+    return () => socket.close()
+  }, [updateConversation, activeChat, markAsRead])
 
-                            <div className="ml-3 flex-1 overflow-hidden">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-medium">{convo.username}</span>
-                                    <span className="text-xs text-muted-foreground">{convo.time}</span>
-                                </div>
-                                <div className="flex items-center">
-                                    <p className={`text-sm truncate ${convo.unread ? "font-semibold" : "text-muted-foreground"}`}>
-                                        {convo.lastMessage}
-                                    </p>
-                                    {convo.unread && (
-                                        <span className="ml-2 w-2 h-2 bg-blue-500 rounded-full" />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <div className="p-4 text-center text-muted-foreground">No conversations found</div>
-                )}
-            </div>
+  const filtered = conversations.filter((c) =>
+    c.username?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div className="w-full md:w-80 lg:w-96 border-r">
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Messages</h2>
+          <Button variant="ghost" size="sm">
+            <Edit className="w-4 h-4" />
+          </Button>
         </div>
-    )
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search messages"
+            className="pl-8"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="overflow-y-auto h-[calc(100vh-10rem)]">
+        {filtered.length > 0 ? (
+          filtered.map((convo) => (
+            <div
+              key={convo.id}
+              className={`flex items-center p-4 cursor-pointer hover:bg-muted/50 ${
+                activeChat?.id === convo.id ? "bg-muted" : ""
+              }`}
+              onClick={() => {
+                onSelectChat(convo)
+                markAsRead(convo.id)
+              }}
+            >
+              <div className="relative">
+                <Avatar className="w-12 h-12">
+                  <AvatarImage src={convo.avatar || "/placeholder.svg"} alt={convo.username} />
+                  <AvatarFallback>{convo.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                {convo.online && (
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                )}
+              </div>
+
+              <div className="ml-3 flex-1 overflow-hidden">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">{convo.username}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {dayjs(convo.time).fromNow()}
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <p
+                    className={`text-sm truncate ${
+                      convo.unread ? "font-semibold" : "text-muted-foreground"
+                    }`}
+                  >
+                    {convo.lastMessage}
+                  </p>
+                  {convo.unread && (
+                    <span className="ml-2 w-2 h-2 bg-blue-500 rounded-full" />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-4 text-center text-muted-foreground">No conversations found</div>
+        )}
+      </div>
+    </div>
+  )
 }

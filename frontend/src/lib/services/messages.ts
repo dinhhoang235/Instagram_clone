@@ -22,13 +22,27 @@ export function createChatSocket(chatId: number): WebSocket {
         console.error("Failed to get token:", error);
     }
 
-    const url = `${protocol}://${host}/ws/chat/${chatId}${token ? `/?token=${token}` : ''}`;
+    // Properly URL encode the token to handle special characters
+    const encodedToken = encodeURIComponent(token);
+    const url = `${protocol}://${host}/ws/chat/${chatId}/?token=${encodedToken}`;
     console.log("Connecting to WebSocket:", url);
 
     const socket = new WebSocket(url);
 
     socket.onopen = () => console.log("WebSocket connected");
     socket.onerror = (err) => console.error("WebSocket error:", err);
+    socket.onclose = (event) => {
+        console.log("Chat WebSocket closed:", event.code, event.reason);
+        // Reconnect after a brief delay if connection was closed unexpectedly
+        if (event.code !== 1000) {
+            console.log("Attempting to reconnect chat in 3 seconds...");
+            setTimeout(() => {
+                console.log("Reconnecting to chat WebSocket...");
+                // Return value is not used here since reconnection is handled internally
+                createChatSocket(chatId);
+            }, 3000);
+        }
+    };
 
     return socket;
 }
@@ -44,11 +58,30 @@ export function createConversationsSocket(): WebSocket {
     console.error("Failed to get token:", error);
   }
 
-  const url = `${protocol}://${host}/ws/conversations/${token ? `?token=${token}` : ''}`;
+  // Properly URL encode the token to handle special characters
+  const encodedToken = encodeURIComponent(token);
+  const url = `${protocol}://${host}/ws/conversations/?token=${encodedToken}`;
+  console.log("Connecting to Conversations WebSocket:", url);
+  
   const socket = new WebSocket(url);
 
   socket.onopen = () => console.log("Connected to Conversations WebSocket");
-  socket.onerror = (err) => console.error("WebSocket error:", err);
+  socket.onerror = (err) => {
+    console.error("WebSocket error:", err);
+    // You could implement reconnection logic here if needed
+  };
+  socket.onclose = (event) => {
+    console.log("Conversations WebSocket closed:", event.code, event.reason);
+    // Reconnect after a brief delay if connection was closed unexpectedly
+    if (event.code !== 1000) {
+      console.log("Attempting to reconnect in 3 seconds...");
+      setTimeout(() => {
+        console.log("Reconnecting to WebSocket...");
+        // Return value not used here since we're just reconnecting automatically
+        createConversationsSocket();
+      }, 3000);
+    }
+  };
 
   return socket;
 }
