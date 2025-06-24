@@ -11,6 +11,7 @@ import {
 import api from '@/lib/api'
 
 type User = {
+  id: number
   email: string
   username: string
   avatar?: string
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async () => {
     try {
       const res = await api.get<{
+        id: number
         email: string
         username: string
         image?: string
@@ -44,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = res.data
       const profile = {
+        id: data.id,
         email: data.email,
         username: data.username,
         avatar: data.image,

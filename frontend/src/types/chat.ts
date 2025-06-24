@@ -1,16 +1,20 @@
 export interface MessageType {
     id: number
     sender: string
+    sender_id?: number  // Add sender_id field
     text: string
     time: string
     isOwn: boolean
+    readByIds?: number[]
 }
 
 export interface ChatProps {
-    chatId: number
-    username: string
-    avatar: string
-    online: boolean
+  chatId: number
+  username: string
+  avatar: string
+  online: boolean
+  currentUserId: number
+  partnerId: number
 }
 
 export interface MessageListType {
@@ -19,8 +23,9 @@ export interface MessageListType {
     avatar: string | null 
     lastMessage: string
     time: string
-    unread: boolean
     online?: boolean
+    unread_count: number
+    partner_id?: number
 }
 
 export interface PaginatedResponse<T> {
@@ -28,4 +33,12 @@ export interface PaginatedResponse<T> {
   next: string | null
   previous: string | null
   results: T[]
+}
+
+export interface MarkReadResponse {
+  status: string
+  marked_read: number
+  thread_id: number
+  user_id: number
+  username: string
 }

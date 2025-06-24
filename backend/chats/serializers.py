@@ -4,19 +4,30 @@ from django.utils import timezone
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
+    sender_id = serializers.SerializerMethodField()
     time = serializers.SerializerMethodField()
     isOwn = serializers.SerializerMethodField()
+    readByIds = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'text', 'time', 'isOwn']
+        fields = ['id', 'sender', 'sender_id', 'text', 'time', 'isOwn', 'readByIds']
 
     def get_sender(self, obj):
         return obj.sender.username
+        
+    def get_sender_id(self, obj):
+        return obj.sender.id
 
     def get_isOwn(self, obj):
         request = self.context.get('request')
         return request and obj.sender == request.user
+    
+    def get_readByIds(self, obj):
+        # Return the IDs of users who have read this message
+        read_by_ids = list(obj.read_by.values_list('id', flat=True))
+        print(f"Message {obj.id} readByIds: {read_by_ids}")  # Add debug log
+        return read_by_ids
 
     def get_time(self, obj):
         local_dt = timezone.localtime(obj.timestamp) 
@@ -27,12 +38,13 @@ class ConversationSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
     lastMessage = serializers.SerializerMethodField()
     time = serializers.SerializerMethodField()
-    unread = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
     online = serializers.SerializerMethodField()
+    partner_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Thread
-        fields = ['id', 'username', 'avatar', 'lastMessage', 'time', 'unread', 'online']
+        fields = ['id', 'username', 'avatar', 'lastMessage', 'time', 'unread_count', 'online', 'partner_id']
 
     def get_other_user(self, obj):
         user = self.context['request'].user
@@ -59,11 +71,19 @@ class ConversationSerializer(serializers.ModelSerializer):
             return local_dt.strftime("%-I:%M %p")
         return ""
 
-    def get_unread(self, obj):
+    def get_unread_count(self, obj):
         user = self.context['request'].user
-        last = obj.last_message()
-        return last and user not in last.read_by.all()
+        # Only count messages from other users that haven't been read by the current user
+        unread_count = obj.messages.exclude(sender=user).exclude(read_by=user).count()
+        print(f"Thread {obj.id}: Unread count for user {user.id} = {unread_count}")
+        return unread_count
 
     def get_online(self, obj):
         other = self.get_other_user(obj)
-        return getattr(other.profile, 'is_online', False)
+        return getattr(other.profile, 'is_online', False) if other else False
+        
+    def get_partner_id(self, obj):
+        other_user = self.get_other_user(obj)
+        partner_id = other_user.id if other_user else None
+        print(f"Thread {obj.id}: partner_id = {partner_id}")
+        return partner_id

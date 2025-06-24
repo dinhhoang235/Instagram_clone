@@ -1,11 +1,20 @@
 import api from "@/lib/api";
 import { MessageType, MessageListType, PaginatedResponse } from "@/types/chat";
+import type { MarkReadResponse } from "@/types/chat";
+
 
 // Lấy danh sách cuộc trò chuyện
 export async function getConversations(): Promise<MessageListType[]> {
     const res = await api.get<MessageListType[]>("/chats/conversations/")
     return res.data
 }
+
+// Create a new conversation with a user
+export async function createConversation(userId: number): Promise<{ thread_id: number }> {
+    const res = await api.post<{ thread_id: number }>("/chats/conversations/", { user_id: userId })
+    return res.data
+}
+
 // Lấy tin nhắn trong một cuộc trò chuyện
 export async function getMessages(threadId: number, offset = 0): Promise<PaginatedResponse<MessageType>> {
     const res = await api.get<PaginatedResponse<MessageType>>(`/chats/threads/${threadId}/messages/?offset=${offset}`)
@@ -84,4 +93,16 @@ export function createConversationsSocket(): WebSocket {
   };
 
   return socket;
+}
+
+
+export async function markConversationAsRead(threadId: number): Promise<MarkReadResponse> {
+  try {
+    const response = await api.post<MarkReadResponse>(`/chats/threads/${threadId}/mark-read/`);
+    console.log(`✅ API call to mark thread ${threadId} as read successful:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to mark thread ${threadId} as read:`, error);
+    throw error; // Rethrow so callers can handle the error
+  }
 }

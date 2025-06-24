@@ -11,6 +11,8 @@ from django.utils.decorators import method_decorator
 from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models import Q
+
 
 from users.models import Profile, Follow
 from users.serializers import (
@@ -131,3 +133,31 @@ class ProfileViewSet(viewsets.ModelViewSet):
         profiles = Profile.objects.filter(user__in=following)
         serializer = ProfileShortSerializer(profiles, many=True, context={'request': request})
         return Response(serializer.data)
+
+class UserSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get('q', '')
+        if not query or len(query) < 2:
+            return Response([])
+        
+        # Don't include the current user in search results
+        users = User.objects.filter(
+            Q(username__icontains=query) | 
+            Q(email__icontains=query)
+        ).exclude(id=request.user.id)[:10]
+        
+        results = []
+        for user in users:
+            avatar = None
+            if hasattr(user, 'profile') and hasattr(user.profile, 'image'):
+                avatar = user.profile.image.url if user.profile.image else None
+                
+            results.append({
+                'id': user.id,
+                'username': user.username,
+                'avatar': avatar
+            })
+            
+        return Response(results)

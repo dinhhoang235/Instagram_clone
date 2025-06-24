@@ -4,7 +4,6 @@ from .models import Message, Thread
 from asgiref.sync import sync_to_async
 from django.utils.timezone import localtime
 from django.contrib.auth.models import AnonymousUser
-from datetime import datetime
 import logging
 
 logger = logging.getLogger("django")
@@ -26,6 +25,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
+        await self.mark_messages_as_read(user)
 
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
@@ -38,6 +38,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             sender=user,
             text=text,
         )
+        message.read_by.add(user)
         avatar = getattr(getattr(user, "profile", None), "avatar", None)
         return {
             "id": message.id,
@@ -46,20 +47,70 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "sender": user.username,
             "sender_avatar": avatar.url if avatar else None,
             "timestamp": localtime(message.timestamp).isoformat(),
+            "sender_id": user.id,  # This is important for identifying who sent the message
+            "read_by_ids": [user.id],
         }
 
     @sync_to_async
     def get_thread_users(self):
         return list(Thread.objects.get(id=self.thread_id).users.all())
 
+    @sync_to_async
+    def get_unread_messages(self, user):
+        return list(
+            Message.objects.filter(
+                thread_id=self.thread_id
+            ).exclude(sender=user).exclude(read_by=user)
+        )
+
+    @sync_to_async
+    def get_unread_count(self, thread_id, user):
+        return Message.objects.filter(
+            thread_id=thread_id
+        ).exclude(sender=user).exclude(read_by=user).count()
+
+    async def mark_messages_as_read(self, user):
+        unread_messages = await self.get_unread_messages(user)
+        logger.info(f"Marking {len(unread_messages)} messages as read by user {user.id}")
+        
+        # Instagram-style: Only send one read receipt for the latest message
+        # This improves performance and better matches Instagram behavior
+        latest_message_id = 0
+        
+        for message in unread_messages:
+            await sync_to_async(message.read_by.add)(user)
+            logger.info(f"Message {message.id} marked as read by user {user.id}")
+            if message.id > latest_message_id:
+                latest_message_id = message.id
+        
+        # Only send one read receipt for the latest message
+        # This will cause the frontend to mark all messages as read up to this point
+        if latest_message_id > 0:
+            logger.info(f"Sending read receipt for latest message {latest_message_id}")
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    "type": "read_receipt",
+                    "message_id": latest_message_id,
+                    "reader_id": user.id,
+                }
+            )
+
     async def receive(self, text_data):
         data = json.loads(text_data)
+        user = self.scope['user']
+
+        if data.get("type") == "mark_read":
+            logger.info(f"User {user.id} ({user.username}) marking messages as read in thread {self.thread_id}")
+            await self.mark_messages_as_read(user)
+            return
+
         text = data.get("text", "").strip()
         if not text:
             return
 
-        user = self.scope['user']
         payload = await self.save_message(user, text)
+        payload["readByIds"] = payload.pop("read_by_ids")  # Fix naming for frontend
 
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -71,6 +122,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         users = await self.get_thread_users()
         for u in users:
+            unread_count = await self.get_unread_count(self.thread_id, u)
+
             await self.channel_layer.group_send(
                 f"conversations_{u.id}",
                 {
@@ -79,17 +132,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "message": payload["text"],
                     "sender": {
                         "username": user.username,
-                        "avatar": payload["sender_avatar"]
+                        "avatar": payload["sender_avatar"],
+                        "id": user.id
                     },
                     "timestamp": payload["timestamp"],
-                    "is_sender": u.id == user.id
+                    "is_sender": u.id == user.id,
+                    "unread_count": unread_count
                 }
             )
 
     async def chat_message(self, event):
         user = self.scope['user']
         is_own = user.username == event.get('sender') if user and not isinstance(user, AnonymousUser) else False
-        await self.send(text_data=json.dumps({ **event, "isOwn": is_own }))
+        
+        # Make sure sender_id is included and preserved
+        if 'sender_id' not in event:
+            # Try to find sender_id if it's missing
+            sender_username = event.get('sender')
+            if sender_username:
+                try:
+                    from django.contrib.auth.models import User
+                    sender = await sync_to_async(User.objects.get)(username=sender_username)
+                    event['sender_id'] = sender.id
+                except Exception as e:
+                    logger.error(f"Failed to get sender_id: {e}")
+        
+        await self.send(text_data=json.dumps({**event, "isOwn": is_own}))
+
+    async def read_receipt(self, event):
+        logger.info(f"Sending read receipt: message {event['message_id']} read by user {event['reader_id']}")
+        await self.send(text_data=json.dumps({
+            "type": "read_receipt",
+            "message_id": event["message_id"],
+            "reader_id": event["reader_id"]
+        }))
+
 
 
 class ConversationConsumer(AsyncWebsocketConsumer):

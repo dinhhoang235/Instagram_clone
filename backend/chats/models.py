@@ -17,3 +17,6 @@ class Message(models.Model):
     text = models.TextField()
     timestamp = models.DateTimeField(default=timezone.now)
     read_by = models.ManyToManyField(User, related_name='read_messages', blank=True)
+    
+    def is_read_by(self, user):
+        return self.read_by.filter(id=user.id).exists()
