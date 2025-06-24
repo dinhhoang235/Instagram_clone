@@ -12,6 +12,8 @@ from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Q
+from users.models import Profile
+from posts.models import Tag, Post
 
 
 from users.models import Profile, Follow
@@ -134,30 +136,56 @@ class ProfileViewSet(viewsets.ModelViewSet):
         serializer = ProfileShortSerializer(profiles, many=True, context={'request': request})
         return Response(serializer.data)
 
-class UserSearchView(APIView):
-    permission_classes = [IsAuthenticated]
-
+class SearchAllAPIView(APIView):
     def get(self, request):
-        query = request.query_params.get('q', '')
-        if not query or len(query) < 2:
-            return Response([])
-        
-        # Don't include the current user in search results
-        users = User.objects.filter(
-            Q(username__icontains=query) | 
-            Q(email__icontains=query)
-        ).exclude(id=request.user.id)[:10]
-        
-        results = []
-        for user in users:
-            avatar = None
-            if hasattr(user, 'profile') and hasattr(user.profile, 'image'):
-                avatar = user.profile.image.url if user.profile.image else None
-                
-            results.append({
-                'id': user.id,
-                'username': user.username,
-                'avatar': avatar
-            })
-            
-        return Response(results)
+        query = request.GET.get("q", "").strip()
+
+        # USERS
+        users = Profile.objects.filter(
+            Q(user__username__icontains=query) |
+            Q(full_name__icontains=query)
+        )[:10]
+
+        user_results = [
+            {
+                "id": profile.id,
+                "username": profile.user.username,
+                "name": profile.full_name,
+                "avatar": profile.avatar.url if profile.avatar else "",
+                "isVerified": profile.is_verified,
+                "isFollowing": request.user.following.filter(id=profile.user.id).exists()
+            }
+            for profile in users
+        ]
+
+        # TAGS
+        tags = Tag.objects.filter(name__icontains=query)[:10]
+        tag_results = [
+            {
+                "id": tag.id,
+                "name": tag.name,
+                "postCount": f"{tag.posts.count()/1_000_000:.1f}M" if tag.posts.count() > 1_000_000 else str(tag.posts.count())
+            }
+            for tag in tags
+        ]
+
+        # PLACES (giả sử lấy từ Post.location)
+        places_qs = Post.objects.filter(location__icontains=query).values("location").annotate(count=models.Count("id")).distinct()[:10]
+        place_results = [
+            {
+                "id": str(index),
+                "name": place["location"],
+                "postCount": f"{place['count']/1_000_000:.1f}M" if place["count"] > 1_000_000 else str(place["count"])
+            }
+            for index, place in enumerate(places_qs, 1)
+        ]
+
+        # RECENT SEARCHES – có thể lưu từ session hoặc user.profile.recent_searches
+        recent_searches = []  # tuỳ bạn xử lý
+
+        return Response({
+            "users": user_results,
+            "tags": tag_results,
+            "places": place_results,
+            "recent_searches": recent_searches
+        })
