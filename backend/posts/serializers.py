@@ -54,4 +54,10 @@ class PostSerializer(serializers.ModelSerializer):
             return obj.likes.filter(id=request.user.id).exists()
         return False
     
+class TagSerializer(serializers.ModelSerializer):
+    postCount = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Tag
+        fields = ['id', 'name', 'postCount']
     

@@ -3,6 +3,9 @@ from rest_framework.decorators import action
 from posts.models import Post
 from posts.serializers import PostSerializer
 from rest_framework.response import Response
+from posts.models import Tag
+from posts.serializers import TagSerializer
+from django.db.models import Count
 
 class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
@@ -21,6 +24,43 @@ class PostViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
         
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def feed(self, request):
+        user = request.user
+        # Lấy danh sách ID người dùng mà mình đang follow + chính mình
+        following_ids = list(user.following.values_list('following__id', flat=True))
+        following_ids.append(user.id)  # thêm bài viết của chính mình
+        # Lấy post từ danh sách này
+        posts = Post.objects.filter(
+            user__id__in=following_ids
+        ).select_related('user', 'user__profile').prefetch_related('tags', 'likes').order_by('-posted')
+
+        page = self.paginate_queryset(posts)
+        if page is not None:
+            serializer = PostSerializer(page, many=True, context=self.get_serializer_context())
+            return self.get_paginated_response(serializer.data)
+
+        serializer = PostSerializer(posts, many=True, context=self.get_serializer_context())
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def explore(self, request):
+        user = request.user
+
+        # Lọc các bài viết KHÔNG phải của user hiện tại
+        posts = Post.objects.exclude(user=user).select_related('user', 'user__profile').prefetch_related('tags', 'likes')
+
+        # Có thể random hoặc order_by theo "-posted"
+        posts = posts.order_by('-posted')  # Hoặc .order_by('?') nếu muốn random
+
+        page = self.paginate_queryset(posts)
+        if page is not None:
+            serializer = PostSerializer(page, many=True, context=self.get_serializer_context())
+            return self.get_paginated_response(serializer.data)
+
+        serializer = PostSerializer(posts, many=True, context=self.get_serializer_context())
+        return Response(serializer.data)
+        
     @action(detail=True, methods=['POST'], permission_classes=[permissions.IsAuthenticated])
     def like(self, request, pk=None):
         post = self.get_object()
@@ -38,3 +78,29 @@ class PostViewSet(viewsets.ModelViewSet):
             'likes': post.likes.count(),
             'is_liked': liked
         })
+        
+    @action(detail=False, methods=["get"], url_path="places/popular")
+    def popular_places(self, request):
+        places = (
+            Post.objects
+            .exclude(location__isnull=True)
+            .exclude(location__exact="")
+            .values("location")
+            .annotate(postCount=Count("id"))
+            .order_by("-postCount")[:20]
+        )
+        return Response(places)
+
+class TagViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+
+    @action(detail=False, methods=['get'], url_path='trending')
+    def trending(self, request):
+        tags = (
+            Tag.objects.annotate(postCount=Count("posts"))
+            .filter(postCount__gt=0)
+            .order_by("-postCount")[:20]
+        )
+        serializer = self.get_serializer(tags, many=True)
+        return Response(serializer.data)
