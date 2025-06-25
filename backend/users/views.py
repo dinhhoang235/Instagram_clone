@@ -107,18 +107,19 @@ class ProfileViewSet(viewsets.ModelViewSet):
         return user.profile
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
-    def follow(self, request, pk=None):
-        to_follow = get_object_or_404(User, username=pk)
-        if request.user == to_follow:
-            return Response({"detail": "You cannot follow yourself."}, status=400)
-        Follow.objects.get_or_create(follower=request.user, following=to_follow)
-        return Response({"detail": "Followed."})
+    def toggle_follow(self, request, pk=None):
+        target_user = get_object_or_404(User, username=pk)
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
-    def unfollow(self, request, pk=None):
-        to_unfollow = get_object_or_404(User, username=pk)
-        Follow.objects.filter(follower=request.user, following=to_unfollow).delete()
-        return Response({"detail": "Unfollowed."})
+        if request.user == target_user:
+            return Response({"detail": "You cannot follow yourself."}, status=400)
+
+        existing = Follow.objects.filter(follower=request.user, following=target_user).first()
+        if existing:
+            existing.delete()
+            return Response({"detail": "Unfollowed", "is_following": False})
+        else:
+            Follow.objects.create(follower=request.user, following=target_user)
+            return Response({"detail": "Followed", "is_following": True})
 
     @action(detail=True, methods=["get"])
     def followers(self, request, pk=None):

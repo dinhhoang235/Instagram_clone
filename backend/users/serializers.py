@@ -181,6 +181,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     following_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
     is_self = serializers.SerializerMethodField()
+    mutual_followers_count = serializers.SerializerMethodField()
+    join_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
@@ -191,7 +193,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'is_private', 'allow_tagging', 'show_activity', 'allow_story_resharing',
             'allow_comments', 'allow_messages',
             'posts_count', 'followers_count', 'following_count',
-            'is_following', 'is_self',
+            'is_following', 'is_self', 'mutual_followers_count', 'join_date'
         ]
     
     def get_avatar(self, obj):
@@ -234,6 +236,25 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_is_self(self, obj):
         request_user = self.context.get('request').user
         return obj.is_self(request_user) if request_user.is_authenticated else False
+    
+    def get_mutual_followers_count(self, obj):
+        request_user = self.context.get('request').user
+        if not request_user.is_authenticated or request_user == obj.user:
+            return 0
+
+        # Người mà request_user đang theo dõi
+        request_user_following_ids = request_user.following.values_list('following_id', flat=True)
+
+        # Người mà profile user đang theo dõi
+        profile_user_following_ids = obj.user.following.values_list('following_id', flat=True)
+
+        # Mutual = cùng follow một số người
+        mutual_ids = set(request_user_following_ids).intersection(profile_user_following_ids)
+        return len(mutual_ids)
+    
+    def get_join_date(self, obj):
+        joined = obj.user.date_joined
+        return f"Joined {joined.strftime('%B %Y')}" 
 
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)

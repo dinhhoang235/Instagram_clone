@@ -70,7 +70,9 @@ class Profile(models.Model):
         return self.user == request_user
     
     def is_following(self, request_user):
-        return self.user.followers.filter(id=request_user.id).exists() if request_user.is_authenticated else False
+        if not request_user.is_authenticated:
+            return False
+        return Follow.objects.filter(follower=request_user, following=self.user).exists()
 
 
 class Follow(models.Model):

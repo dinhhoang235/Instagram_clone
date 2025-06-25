@@ -21,6 +21,10 @@ export type ProfileType = {
     posts_count: number
     followers_count: number
     following_count: number
+    is_following: boolean
+    is_self: boolean
+    mutual_followers_count: number
+    join_date: string
 }
 export type UpdateProfileInput = Partial<Omit<ProfileType,'username' | 'email' | 'avatar' >> & {
   avatarFile?: File
