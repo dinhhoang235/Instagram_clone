@@ -2,5 +2,5 @@ from django.urls import path
 from .views import SearchAllAPIView
 
 urlpatterns = [
-     path("search/", SearchAllAPIView.as_view()),
+    path("", SearchAllAPIView.as_view(), name="search-all"),
 ]

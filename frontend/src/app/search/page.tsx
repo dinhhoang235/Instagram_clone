@@ -1,96 +1,27 @@
 "use client"
 
-import type React from "react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { useAuth } from "@/components/auth-provider"
+import { redirect } from "next/navigation"
 
-import { useState } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { SearchIcon, X } from "lucide-react"
-import Image from "next/image"
-import Link from "next/link"
-import { useAuth } from "@/components/auth-provider"
-import { redirect } from "next/navigation"
 
-// Mock data
-const recentSearches = [
-  { id: "1", username: "jane_smith", name: "Jane Smith", avatar: "/placeholder-user.jpg" },
-  { id: "2", username: "travel_photography", name: "Travel Photography", avatar: "/placeholder-user.jpg" },
-  { id: "3", username: "food_lover", name: "Food Lover", avatar: "/placeholder-user.jpg" },
-]
-
-const users = [
-  {
-    id: "1",
-    username: "jane_smith",
-    name: "Jane Smith",
-    avatar: "/placeholder-user.jpg",
-    isVerified: true,
-    isFollowing: true,
-  },
-  {
-    id: "2",
-    username: "john_doe",
-    name: "John Doe",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    isFollowing: false,
-  },
-  {
-    id: "3",
-    username: "travel_photography",
-    name: "Travel Photography",
-    avatar: "/placeholder-user.jpg",
-    isVerified: true,
-    isFollowing: false,
-  },
-  {
-    id: "4",
-    username: "food_lover",
-    name: "Food Lover",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    isFollowing: true,
-  },
-  {
-    id: "5",
-    username: "fitness_guru",
-    name: "Fitness Guru",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    isFollowing: false,
-  },
-  {
-    id: "6",
-    username: "tech_news",
-    name: "Tech News",
-    avatar: "/placeholder-user.jpg",
-    isVerified: true,
-    isFollowing: false,
-  },
-]
-
-const tags = [
-  { id: "1", name: "photography", postCount: "2.3M" },
-  { id: "2", name: "travel", postCount: "5.7M" },
-  { id: "3", name: "food", postCount: "3.1M" },
-  { id: "4", name: "fitness", postCount: "1.8M" },
-  { id: "5", name: "technology", postCount: "4.2M" },
-]
-
-const places = [
-  { id: "1", name: "New York City", postCount: "12.5M" },
-  { id: "2", name: "Paris, France", postCount: "8.3M" },
-  { id: "3", name: "Tokyo, Japan", postCount: "7.1M" },
-  { id: "4", name: "London, UK", postCount: "9.4M" },
-]
+import { searchAll } from "@/lib/services/search"
+import type { SearchResponse } from "@/types/search"
 
 export default function SearchPage() {
   const { isAuthenticated } = useAuth()
+
   const [searchQuery, setSearchQuery] = useState("")
-  const [showResults, setShowResults] = useState(false)
+  const [data, setData] = useState<SearchResponse | null>(null)
+  const [loading, setLoading] = useState(false)
 
   if (!isAuthenticated) {
     redirect("/login")
@@ -98,23 +29,29 @@ export default function SearchPage() {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
-    setShowResults(e.target.value.length > 0)
   }
 
   const clearSearch = () => {
     setSearchQuery("")
-    setShowResults(false)
   }
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setLoading(true)
+      searchAll(searchQuery)
+        .then(setData)
+        .catch(() => setData(null))
+        .finally(() => setLoading(false))
+    }, 300)
+    return () => clearTimeout(delay)
+  }, [searchQuery])
 
-  const filteredTags = tags.filter((tag) => tag.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredUsers = data?.users || []
+  const filteredTags = data?.tags || []
+  const filteredPlaces = data?.places || []
+  const recentSearches = data?.recent_searches || []
 
-  const filteredPlaces = places.filter((place) => place.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const showResults = searchQuery.length > 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,7 +62,12 @@ export default function SearchPage() {
             <div className="mb-6">
               <div className="relative">
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input placeholder="Search" className="pl-10 pr-10" value={searchQuery} onChange={handleSearch} />
+                <Input
+                  placeholder="Search"
+                  className="pl-10 pr-10"
+                  value={searchQuery}
+                  onChange={handleSearch}
+                />
                 {searchQuery && (
                   <button className="absolute right-3 top-1/2 transform -translate-y-1/2" onClick={clearSearch}>
                     <X className="w-5 h-5 text-muted-foreground" />
@@ -134,7 +76,9 @@ export default function SearchPage() {
               </div>
             </div>
 
-            {showResults ? (
+            {loading ? (
+              <p className="text-center text-muted-foreground">Searching...</p>
+            ) : showResults ? (
               <div className="space-y-6">
                 <Tabs defaultValue="top" className="w-full">
                   <TabsList className="grid w-full grid-cols-4 mb-6">
@@ -296,9 +240,7 @@ export default function SearchPage() {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold">Recent</h3>
-                    <Button variant="link" className="text-sm">
-                      Clear all
-                    </Button>
+                    <Button variant="link" className="text-sm">Clear all</Button>
                   </div>
 
                   <div className="space-y-2">

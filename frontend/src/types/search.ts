@@ -1,0 +1,34 @@
+export interface SearchUser {
+  id: string
+  username: string
+  name: string
+  avatar: string
+  isVerified: boolean
+  isFollowing: boolean
+}
+
+export interface SearchTag {
+  id: string
+  name: string
+  postCount: string
+}
+
+export interface SearchPlace {
+  id: string
+  name: string
+  postCount: string
+}
+
+export interface RecentSearch {
+  id: string
+  username: string
+  name: string
+  avatar: string
+}
+
+export interface SearchResponse {
+  users: SearchUser[]
+  tags: SearchTag[]
+  places: SearchPlace[]
+  recent_searches: RecentSearch[]
+}
