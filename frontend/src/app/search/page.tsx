@@ -180,8 +180,8 @@ export default function SearchPage() {
                               <p className="text-sm text-muted-foreground">{user.name}</p>
                             </div>
                           </div>
-                          <Button variant={user.isFollowing ? "outline" : "default"} size="sm">
-                            {user.isFollowing ? "Following" : "Follow"}
+                          <Button variant={user.is_following ? "outline" : "default"} size="sm">
+                            {user.is_following ? "Following" : "Follow"}
                           </Button>
                         </Link>
                       ))
@@ -244,22 +244,28 @@ export default function SearchPage() {
                   </div>
 
                   <div className="space-y-2">
-                    {recentSearches.map((search) => (
-                      <div key={search.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
-                        <div className="flex items-center space-x-3">
-                          <Avatar>
-                            <AvatarImage src={search.avatar || "/placeholder.svg"} alt={search.username} />
-                            <AvatarFallback>{search.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{search.username}</p>
-                            <p className="text-sm text-muted-foreground">{search.name}</p>
+                    {recentSearches.map((user) => (
+                      <Link
+                        href={`/${user.username}`}
+                        key={user.id}
+                      >
+                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
+                          <div className="flex items-center space-x-3">
+                            <Avatar>
+                              <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.username} />
+                              <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{user.username}</p>
+                              <p className="text-sm text-muted-foreground">{user.name}</p>
+                            </div>
                           </div>
+                          <button>
+                            <X className="w-4 h-4 text-muted-foreground" />
+                          </button>
                         </div>
-                        <button>
-                          <X className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      </div>
+                      </Link>
+
                     ))}
                   </div>
                 </div>

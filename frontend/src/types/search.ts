@@ -3,8 +3,8 @@ export interface SearchUser {
   username: string
   name: string
   avatar: string
-  isVerified: boolean
-  isFollowing: boolean
+  is_verified: boolean
+  is_following: boolean
 }
 
 export interface SearchTag {

@@ -1,4 +1,3 @@
-# search/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q, Count
@@ -33,9 +32,8 @@ class SearchAllAPIView(APIView):
                         defaults={"searched_at": timezone.now()}
                     )
 
-            # ✅ Truyền đúng User
             user_results = RecentSearchUserSerializer(
-                [profile.user for profile in profiles],
+                profiles,  # ✅ Truyền Profile objects
                 many=True,
                 context={"request": request}
             ).data
@@ -72,9 +70,9 @@ class SearchAllAPIView(APIView):
                 user=request.user
             ).select_related("searched_user", "searched_user__profile")[:5]
 
-            recent_users = [r.searched_user for r in recent]
+            recent_profiles = [r.searched_user.profile for r in recent]
             recent_searches = RecentSearchUserSerializer(
-                recent_users,
+                recent_profiles,
                 many=True,
                 context={"request": request}
             ).data
