@@ -20,7 +20,7 @@ export interface SearchPlace {
 }
 
 export interface RecentSearch {
-  id: string
+  id: number
   username: string
   name: string
   avatar: string

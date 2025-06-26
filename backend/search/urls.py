@@ -1,6 +1,9 @@
 from django.urls import path
-from .views import SearchAllAPIView
+from .views import SearchAllAPIView, ClearAllRecentSearchAPIView, DeleteRecentSearchAPIView, AddRecentSearchAPIView
 
 urlpatterns = [
     path("", SearchAllAPIView.as_view(), name="search-all"),
+    path("search/recent/add/", AddRecentSearchAPIView.as_view(), name="add-recent-search"),
+    path("recent/clear/", ClearAllRecentSearchAPIView.as_view(), name="clear_all_searches"),
+    path("recent/<int:user_id>/delete/", DeleteRecentSearchAPIView.as_view(), name="delete_recent_search"),
 ]

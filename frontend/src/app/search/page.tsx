@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { useAuth } from "@/components/auth-provider"
 import { redirect } from "next/navigation"
 
@@ -15,6 +14,7 @@ import { SearchIcon, X } from "lucide-react"
 
 import { searchAll } from "@/lib/services/search"
 import type { SearchResponse } from "@/types/search"
+import { clearAllRecentSearches, deleteRecentSearch, addRecentSearch } from "@/lib/services/search"
 
 export default function SearchPage() {
   const { isAuthenticated } = useAuth()
@@ -33,6 +33,38 @@ export default function SearchPage() {
 
   const clearSearch = () => {
     setSearchQuery("")
+  }
+
+  const clearUserFromRecent = async (userId: number) => {
+    try {
+      await deleteRecentSearch(userId)
+      setData((prev) =>
+        prev
+          ? {
+            ...prev,
+            recent_searches: prev.recent_searches.filter((u) => u.id !== userId),
+          }
+          : null
+      )
+    } catch (error) {
+      console.error("Failed to delete recent search", error)
+    }
+  }
+
+  const handleClearAllRecent = async () => {
+    try {
+      await clearAllRecentSearches()
+      setData((prev) =>
+        prev
+          ? {
+            ...prev,
+            recent_searches: [],
+          }
+          : null
+      )
+    } catch (error) {
+      console.error("Failed to clear all recent searches", error)
+    }
   }
 
   useEffect(() => {
@@ -240,47 +272,39 @@ export default function SearchPage() {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold">Recent</h3>
-                    <Button variant="link" className="text-sm">Clear all</Button>
+                    <Button variant="link" className="text-sm" onClick={handleClearAllRecent}>
+                      Clear all
+                    </Button>
                   </div>
 
                   <div className="space-y-2">
                     {recentSearches.map((user) => (
-                      <Link
-                        href={`/${user.username}`}
-                        key={user.id}
-                      >
-                        <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
-                          <div className="flex items-center space-x-3">
-                            <Avatar>
-                              <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.username} />
-                              <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{user.username}</p>
-                              <p className="text-sm text-muted-foreground">{user.name}</p>
-                            </div>
+                      <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
+                        <Link
+                          href={`/${user.username}`}
+                          onClick={() => addRecentSearch(user.id)}
+                          className="flex items-center space-x-3 flex-1"
+                        >
+                          <Avatar>
+                            <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.username} />
+                            <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.username}</p>
+                            <p className="text-sm text-muted-foreground">{user.name}</p>
                           </div>
-                          <button>
-                            <X className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                        </div>
-                      </Link>
+                        </Link>
 
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-4">Explore</h3>
-                  <div className="grid grid-cols-3 gap-1">
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <div key={i} className="aspect-square relative">
-                        <Image
-                          src={`/placeholder.svg?height=200&width=200&text=${i + 1}`}
-                          alt={`Explore ${i + 1}`}
-                          fill
-                          className="object-cover"
-                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            clearUserFromRecent(user.id)
+                          }}
+                          className="ml-2"
+                        >
+                          <X className="w-4 h-4 text-muted-foreground" />
+                        </button>
                       </div>
                     ))}
                   </div>

@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q, Count
 from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 
 from users.models import Profile
 from posts.models import Post, Tag
@@ -68,7 +70,7 @@ class SearchAllAPIView(APIView):
         if request.user.is_authenticated and not query:
             recent = SearchHistory.objects.filter(
                 user=request.user
-            ).select_related("searched_user", "searched_user__profile")[:5]
+            ).select_related("searched_user", "searched_user__profile").order_by("-searched_at")[:5]
 
             recent_profiles = [r.searched_user.profile for r in recent]
             recent_searches = RecentSearchUserSerializer(
@@ -83,3 +85,45 @@ class SearchAllAPIView(APIView):
             "places": place_results,
             "recent_searches": recent_searches
         })
+        
+
+class AddRecentSearchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        searched_user_id = request.data.get("user_id")
+        if not searched_user_id:
+            return Response({"detail": "user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if int(searched_user_id) == request.user.id:
+            return Response({"detail": "Cannot search yourself."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            SearchHistory.objects.update_or_create(
+                user=request.user,
+                searched_user_id=searched_user_id,
+                defaults={"searched_at": timezone.now()}
+            )
+            return Response({"detail": "Search recorded."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class DeleteRecentSearchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, user_id):
+        try:
+            SearchHistory.objects.filter(user=request.user, searched_user_id=user_id).delete()
+            return Response({"detail": "Recent search deleted."})
+        except Exception:
+            return Response({"detail": "Error deleting search."}, status=status.HTTP_400_BAD_REQUEST)
+        
+class ClearAllRecentSearchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        deleted_count, _ = SearchHistory.objects.filter(user=request.user).delete()
+        return Response(
+            {"detail": f"Deleted {deleted_count} recent search{'es' if deleted_count != 1 else ''}."},
+            status=status.HTTP_200_OK
+        )

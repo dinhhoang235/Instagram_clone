@@ -7,3 +7,17 @@ export const searchAll = async (query: string): Promise<SearchResponse> => {
     })
     return res.data
 }
+
+// add a recent search for a user
+export const addRecentSearch = async (userId: number) => {
+  await api.post("/search/recent/add/", { user_id: userId })
+}
+
+// delete all recent searches
+export const clearAllRecentSearches = async (): Promise<void> => {
+  await api.delete("/search/recent/clear/")
+}
+// delete a specific recent search by user ID
+export const deleteRecentSearch = async (userId: number): Promise<void> => {
+  await api.delete(`/search/recent/${userId}/delete/`)
+}
