@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -9,120 +9,62 @@ import { Search, BadgeCheck, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { redirect, useRouter } from "next/navigation"
 import Link from "next/link"
+import { getSuggestedUsers, toggleFollowUser } from "@/lib/services/profile"
+import type { SuggestedUserType } from "@/types/profile"
 
-// Mock suggested users data matching the image
-const suggestedUsers = [
-  {
-    id: "1",
-    username: "instagram",
-    name: "Instagram",
-    avatar: "/placeholder-user.jpg",
-    isVerified: true,
-    reason: "Popular",
-    isFollowing: false,
-  },
-  {
-    id: "2",
-    username: "khahn_zdyy",
-    name: "Khanh Vy",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Followed by toannek05 + 1 more",
-    isFollowing: false,
-  },
-  {
-    id: "3",
-    username: "thanh_van_1309",
-    name: "Thanh Vann",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Followed by cow_sonwz + 2 more",
-    isFollowing: false,
-  },
-  {
-    id: "4",
-    username: "dwgnt_",
-    name: "dwgnt",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Followed by tung_nguyn + 3 more",
-    isFollowing: false,
-  },
-  {
-    id: "5",
-    username: "tdung_88",
-    name: "Vu Tien Dung",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Suggested for you",
-    isFollowing: false,
-  },
-  {
-    id: "6",
-    username: "ngamini_",
-    name: "Nga Mini",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Followed by m_chau03",
-    isFollowing: false,
-  },
-  {
-    id: "7",
-    username: "mt_lucas28",
-    name: "Bui Manh Tien",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Suggested for you",
-    isFollowing: false,
-  },
-  {
-    id: "8",
-    username: "maeankkismel",
-    name: "Mae Ankk",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Suggested for you",
-    isFollowing: false,
-  },
-  {
-    id: "9",
-    username: "_th.linnn",
-    name: "Thu Linh",
-    avatar: "/placeholder-user.jpg",
-    isVerified: false,
-    reason: "Suggested for you",
-    isFollowing: false,
-  },
-]
 
 export default function ExplorePeoplePage() {
   const { isAuthenticated } = useAuth()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
-  const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set())
+  const [followedUsers, setFollowedUsers] = useState<Record<string, boolean>>({})
+  const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUserType[]>([])
+  const [loading, setLoading] = useState(true)
 
   if (!isAuthenticated) {
     redirect("/login")
   }
 
-  const handleFollow = (userId: string) => {
-    setFollowedUsers((prev) => new Set([...prev, userId]))
-  }
+  useEffect(() => {
+    const fetchSuggested = async () => {
+      try {
+        const data = await getSuggestedUsers()
+        setSuggestedUsers(data)
+      } catch (error) {
+        console.error("Error fetching suggested users:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  const handleUnfollow = (userId: string) => {
-    setFollowedUsers((prev) => {
-      const newSet = new Set(prev)
-      newSet.delete(userId)
-      return newSet
-    })
+    fetchSuggested()
+  }, [])
+
+  const handleToggleFollow = async (username: string) => {
+    try {
+      const res = await toggleFollowUser(username)
+      setFollowedUsers((prev) => ({
+        ...prev,
+        [username]: res.is_following,
+      }))
+    } catch (error) {
+      console.error("Failed to toggle follow:", error)
+    }
   }
 
   const filteredUsers = suggestedUsers.filter(
     (user) =>
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-muted-foreground">Loading suggestions...</p>
+      </div>
+    )
+  }
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
@@ -175,14 +117,13 @@ export default function ExplorePeoplePage() {
                   {/* Follow Button */}
                   <Button
                     size="sm"
-                    className={`ml-4 px-6 py-1.5 text-sm font-semibold rounded-lg ${
-                      followedUsers.has(user.id)
-                        ? "bg-muted text-foreground hover:bg-muted/80"
-                        : "bg-blue-500 text-white hover:bg-blue-600"
-                    }`}
-                    onClick={() => (followedUsers.has(user.id) ? handleUnfollow(user.id) : handleFollow(user.id))}
+                    className={`ml-4 px-6 py-1.5 text-sm font-semibold rounded-lg ${(followedUsers[user.username] ?? user.isFollowing)
+                      ? "bg-muted text-foreground hover:bg-muted/80"
+                      : "bg-blue-500 text-white hover:bg-blue-600"
+                      }`}
+                    onClick={() => handleToggleFollow(user.username)}
                   >
-                    {followedUsers.has(user.id) ? "Following" : "Follow"}
+                    {(followedUsers[user.username] ?? user.isFollowing) ? "Following" : "Follow"}
                   </Button>
                 </div>
               ))}

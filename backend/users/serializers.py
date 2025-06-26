@@ -1,6 +1,6 @@
 from rest_framework import serializers 
 from django.contrib.auth.models import User
-from users.models import Profile
+from users.models import Follow, Profile
 from posts.models import Post
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
@@ -255,6 +255,52 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_join_date(self, obj):
         joined = obj.user.date_joined
         return f"Joined {joined.strftime('%B %Y')}" 
+    
+# users/serializers.py
+class SuggestedUserSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username')
+    avatar = serializers.SerializerMethodField()
+    isVerified = serializers.BooleanField(source='is_verified')
+    isFollowing = serializers.SerializerMethodField()
+    reason = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = ['id', 'username', 'avatar', 'isVerified', 'isFollowing', 'reason']
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        url = obj.get_avatar
+        if request:
+            return request.build_absolute_uri(url) 
+        return url
+
+    def get_isFollowing(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return Follow.objects.filter(follower=request.user, following=obj.user).exists()
+
+    def get_reason(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return "Suggested for you"
+
+        following_ids = self.context.get('following_ids', [])
+
+        mutuals = Follow.objects.filter(
+            follower__in=following_ids,
+            following=obj.user
+        ).values_list('follower__username', flat=True)
+
+        mutual_list = list(mutuals)
+        if mutual_list:
+            if len(mutual_list) == 1:
+                return f"Followed by {mutual_list[0]}"
+            return f"Followed by {mutual_list[0]} + {len(mutual_list)-1} more"
+
+        return "Suggested for you"
+
 
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)

@@ -29,3 +29,12 @@ export type ProfileType = {
 export type UpdateProfileInput = Partial<Omit<ProfileType,'username' | 'email' | 'avatar' >> & {
   avatarFile?: File
 }
+export type SuggestedUserType = {
+  id: string
+  username: string
+  name: string
+  avatar: string
+  isVerified: boolean
+  reason: string
+  isFollowing: boolean
+}

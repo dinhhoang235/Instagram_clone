@@ -1,10 +1,12 @@
 '"use client"'
 import { useEffect, useState } from "react"
 import { Post } from "@/components/post"
-// import { SuggestedUsers } from "@/components/suggested-users"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { SuggestedUsers } from "@/components/suggested-users"
 import { PostType } from "@/types/post"
 import { getPosts } from "@/lib/services/posts"
-import { getCurrentUser } from "@/lib/services/auth"
+import { getMyProfile } from "@/lib/services/profile"
+
 
 export function Feed() {
 
@@ -34,9 +36,20 @@ export function Feed() {
   }>(null)
 
   useEffect(() => {
-    getCurrentUser()
-      .then((userData) => setUser(userData))
-      .catch((err) => console.error("Lỗi lấy user:", err))
+    const fetchProfile = async () => {
+      try {
+        const profile = await getMyProfile()
+        setUser({
+          username: profile.username,
+          full_name: profile.full_name,
+          avatar: profile.avatar,
+        })
+      } catch (err) {
+        console.error("Lỗi lấy profile:", err)
+      }
+    }
+
+    fetchProfile()
   }, [])
 
   if (!user) return null
@@ -59,20 +72,28 @@ export function Feed() {
         <div className="sticky top-8 space-y-6">
           {/* User Profile Card */}
           <div className="flex items-center space-x-3 p-4">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-yellow-400 to-pink-600 p-0.5">
+            {/* Avatar with gradient border */}
+            <div className="w-14 h-14 rounded-full bg-gradient-to-t p-0.5">
               <div className="w-full h-full rounded-full bg-white p-0.5">
-                
+                <Avatar className="w-full h-full">
+                  <AvatarImage src={user.avatar || "/placeholder-user.jpg"} alt={user.username} />
+                  <AvatarFallback>{user.username?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
               </div>
             </div>
+
+            {/* User info */}
             <div className="flex-1">
               <p className="font-semibold text-sm">{user.username}</p>
               <p className="text-muted-foreground text-sm">{user.full_name}</p>
             </div>
+
+            {/* Switch button */}
             <button className="text-blue-500 font-semibold text-xs">Switch</button>
           </div>
 
           {/* Suggested Users */}
-          {/* <SuggestedUsers variant="sidebar" limit={5} /> */}
+          <SuggestedUsers variant="sidebar" limit={5} />
 
           {/* Footer Links */}
           <div className="text-xs text-muted-foreground space-y-3 px-4">

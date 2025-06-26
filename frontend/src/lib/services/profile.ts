@@ -1,5 +1,5 @@
 import api from "@/lib/api"
-import type { ProfileType, UpdateProfileInput } from "@/types/profile"
+import type { ProfileType, UpdateProfileInput, SuggestedUserType } from "@/types/profile"
 
 export async function getMyProfile(): Promise<ProfileType> {
   const res = await api.get<ProfileType>("/profiles/me/")
@@ -36,5 +36,11 @@ export async function getFollowers(username: string): Promise<ProfileType[]> {
 // get list of following
 export async function getFollowing(username: string): Promise<ProfileType[]> {
   const res = await api.get<ProfileType[]>(`/profiles/${username}/following/`)
+  return res.data
+}
+
+// suggest users to follow
+export const getSuggestedUsers = async (): Promise<SuggestedUserType[]> => {
+  const res = await api.get<SuggestedUserType[]>("/profiles/suggested/")
   return res.data
 }

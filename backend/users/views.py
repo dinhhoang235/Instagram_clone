@@ -136,3 +136,52 @@ class ProfileViewSet(viewsets.ModelViewSet):
         profiles = Profile.objects.filter(user__in=following)
         serializer = ProfileShortSerializer(profiles, many=True, context={'request': request})
         return Response(serializer.data)
+    
+    @action(detail=False, methods=["get"])
+    def suggested(self, request):
+        user = request.user
+
+        following_ids = Follow.objects.filter(
+            follower=user
+        ).values_list('following_id', flat=True)
+
+        # Người được bạn bè của bạn follow (mutual)
+        mutual_follow_ids_qs = Follow.objects.filter(
+            follower__in=following_ids
+        ).exclude(following__in=following_ids)\
+         .exclude(following=user)\
+         .values('following')\
+         .annotate(count=models.Count('following'))\
+         .order_by('-count')[:20]
+
+        mutual_user_ids = [item['following'] for item in mutual_follow_ids_qs]
+
+        mutual_profiles = Profile.objects.filter(
+            user__in=mutual_user_ids
+        ).select_related('user')
+
+        # Người nổi bật nếu chưa đủ
+        extra_profiles = Profile.objects.exclude(
+            user__in=following_ids
+        ).exclude(user=user)\
+        .annotate(follower_count=models.Count('user__followers'))\
+        .order_by('-follower_count')[:20].select_related('user')
+
+        # Gộp và loại trùng
+        seen = set()
+        all_profiles = []
+
+        for profile in list(mutual_profiles) + list(extra_profiles):
+            if profile.user_id not in seen:
+                all_profiles.append(profile)
+                seen.add(profile.user_id)
+            if len(all_profiles) >= 10:
+                break
+
+        from users.serializers import SuggestedUserSerializer  # Đảm bảo import
+        serializer = SuggestedUserSerializer(
+            all_profiles,
+            many=True,
+            context={'request': request, 'following_ids': list(following_ids)}
+        )
+        return Response(serializer.data)
