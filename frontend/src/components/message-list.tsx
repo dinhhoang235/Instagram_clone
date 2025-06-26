@@ -8,6 +8,7 @@ import { Search, Edit } from "lucide-react"
 import { getConversations, createConversationsSocket, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
 import { useConversationStore } from "@/stores/useConversationStore"
 import type { MessageListType, MarkReadResponse } from "@/types/chat"
+import type { MinimalUser } from "@/types/search"
 import dayjs from "dayjs"
 import relativeTime from "dayjs/plugin/relativeTime"
 import { CreateMessageDialog } from "./create-message-dialog"
@@ -17,9 +18,10 @@ dayjs.extend(relativeTime)
 interface MessageListProps {
   onSelectChat: (chat: MessageListType) => void
   activeChat: MessageListType | null
+  onSelectUserForNewMessage?: (user: MinimalUser) => void
 }
 
-export function MessageList({ onSelectChat, activeChat }: MessageListProps) {
+export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessage }: MessageListProps) {
   const [search, setSearch] = useState("")
   const [timeRefresh, setTimeRefresh] = useState(0) // Add state variable to force timestamp updates
   const [createMessageOpen, setCreateMessageOpen] = useState(false)
@@ -426,7 +428,7 @@ export function MessageList({ onSelectChat, activeChat }: MessageListProps) {
             >
               <div className="relative">
                 <Avatar className="w-12 h-12">
-                  <AvatarImage src={convo.avatar || "/placeholder.svg"} alt={convo.username} />
+                  <AvatarImage src={convo.avatar || "/placeholder-user.jpg"} alt={convo.username} />
                   <AvatarFallback>{convo.username.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 {convo.online && (
@@ -473,8 +475,11 @@ export function MessageList({ onSelectChat, activeChat }: MessageListProps) {
       <CreateMessageDialog 
         open={createMessageOpen} 
         onClose={() => setCreateMessageOpen(false)}
-        onSelectUser={(chat) => {
-          onSelectChat(chat);
+        onSelectUser={(user) => {
+          // Call the parent's callback if provided
+          if (onSelectUserForNewMessage) {
+            onSelectUserForNewMessage(user);
+          }
           setCreateMessageOpen(false);
         }}
       />

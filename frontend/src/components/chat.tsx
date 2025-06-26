@@ -343,7 +343,7 @@ export function Chat({
           <div key={`${msg.id}-${msg.time}-${index}`} className={`flex ${msg.isOwn ? "justify-end" : "justify-start"}`}>
             {!msg.isOwn && (
               <Avatar className="w-8 h-8 mr-2 mt-1">
-                <AvatarImage src={avatar || "/placeholder.svg"} alt={username} />
+                <AvatarImage src={avatar || "/placeholder-user.jpg"} alt={username} />
                 <AvatarFallback>{username.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             )}

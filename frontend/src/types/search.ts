@@ -32,3 +32,9 @@ export interface SearchResponse {
   places: SearchPlace[]
   recent_searches: RecentSearch[]
 }
+
+export interface MinimalUser {
+  id: number
+  username: string
+  avatar: string
+}

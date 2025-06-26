@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Thread, Message
 from django.utils import timezone
+from users.models import Profile
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
@@ -87,3 +88,14 @@ class ConversationSerializer(serializers.ModelSerializer):
         partner_id = other_user.id if other_user else None
         print(f"Thread {obj.id}: partner_id = {partner_id}")
         return partner_id
+    
+class MinimalUserSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+    username = serializers.CharField(source="user.username")
+
+    class Meta:
+        model = Profile
+        fields = ["id", "username", "avatar"]
+
+    def get_avatar(self, obj):
+        return obj.avatar.url if obj.avatar else None

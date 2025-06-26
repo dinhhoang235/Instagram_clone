@@ -42,3 +42,13 @@ export interface MarkReadResponse {
   user_id: number
   username: string
 }
+
+export interface SendFirstMessageResponse {
+  thread_id: number
+  message_id: number
+  partner: {
+    id: number
+    username: string
+    avatar: string
+  }
+}

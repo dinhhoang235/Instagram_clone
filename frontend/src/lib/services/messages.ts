@@ -1,6 +1,6 @@
 import api from "@/lib/api";
 import { MessageType, MessageListType, PaginatedResponse } from "@/types/chat";
-import type { MarkReadResponse } from "@/types/chat";
+import type { MarkReadResponse, SendFirstMessageResponse } from "@/types/chat";
 
 
 // Lấy danh sách cuộc trò chuyện
@@ -105,4 +105,12 @@ export async function markConversationAsRead(threadId: number): Promise<MarkRead
     console.error(`Failed to mark thread ${threadId} as read:`, error);
     throw error; // Rethrow so callers can handle the error
   }
+}
+
+export async function sendFirstMessage(userId: number, text: string): Promise<SendFirstMessageResponse> {
+  const res = await api.post<SendFirstMessageResponse>("/chats/start/", {
+    user_id: userId,
+    text: text,
+  })
+  return res.data
 }

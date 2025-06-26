@@ -8,7 +8,7 @@ from rest_framework import status
 from users.models import Profile
 from posts.models import Post, Tag
 from search.models import SearchHistory
-from search.serializers import RecentSearchUserSerializer
+from search.serializers import RecentSearchUserSerializer, MinimalUserSerializer
 
 
 class SearchAllAPIView(APIView):
@@ -127,3 +127,19 @@ class ClearAllRecentSearchAPIView(APIView):
             {"detail": f"Deleted {deleted_count} recent search{'es' if deleted_count != 1 else ''}."},
             status=status.HTTP_200_OK
         )
+        
+class SearchUserAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.GET.get("q", "").strip()
+        if not query:
+            return Response([])
+
+        profiles = Profile.objects.filter(
+            Q(user__username__icontains=query) |
+            Q(full_name__icontains=query)
+        ).exclude(user=request.user).select_related("user")[:10]
+
+        serializer = MinimalUserSerializer(profiles, many=True, context={"request": request})
+        return Response(serializer.data)
