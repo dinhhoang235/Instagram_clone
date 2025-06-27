@@ -1,9 +1,9 @@
 import React from 'react'
 import { useConversationStore } from '@/stores/useConversationStore'
-import { useWebSocket } from '@/components/websocket-provider'
+import { useWebSocket } from '@/components/message-provider'
 import { cn } from '@/lib/utils'
 
-export function RealTimeStatus() {
+export function MessageStatus() {
   const { conversations } = useConversationStore()
   const { isConnected, isConnecting } = useWebSocket()
   

@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useConversationStore } from "@/stores/useConversationStore"
 import { useNotificationStore } from "@/stores/useNotificationStore"
-import { useWebSocket } from "@/components/websocket-provider"
+import { useWebSocket } from "@/components/message-provider"
 import { useEffect } from "react"
 
 const navigation = [

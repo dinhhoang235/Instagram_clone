@@ -23,7 +23,7 @@ interface WebSocketProviderProps {
   children: React.ReactNode
 }
 
-export function WebSocketProvider({ children }: WebSocketProviderProps) {
+export function MessageProvider({ children }: WebSocketProviderProps) {
   const { isAuthenticated } = useAuth()
   const { updateConversation } = useConversationStore()
   const socketRef = useRef<WebSocket | null>(null)
