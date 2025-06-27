@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
+import { WebSocketProvider } from "@/components/websocket-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,7 +24,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <WebSocketProvider>
+              {children}
+            </WebSocketProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

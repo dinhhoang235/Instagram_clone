@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 import type { MessageListType } from "@/types/chat"
 
 type ConversationStore = {
@@ -20,10 +21,12 @@ type ConversationStore = {
   clearConversations: () => void
 }
 
-export const useConversationStore = create<ConversationStore>((set) => ({
-  conversations: [],
+export const useConversationStore = create<ConversationStore>()(
+  persist(
+    (set) => ({
+      conversations: [],
 
-  setConversations: (convos) => set({ conversations: convos }),
+      setConversations: (convos) => set({ conversations: convos }),
 
   updateConversation: (incoming) =>
     set((state) => {
@@ -90,5 +93,11 @@ export const useConversationStore = create<ConversationStore>((set) => ({
       };
     }),
 
-  clearConversations: () => set({ conversations: [] }),
-}))
+      clearConversations: () => set({ conversations: [] }),
+    }),
+    {
+      name: 'conversation-storage',
+      partialize: (state) => ({ conversations: state.conversations }),
+    }
+  )
+)

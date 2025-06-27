@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Edit } from "lucide-react"
-import { getConversations, createConversationsSocket, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
+import { getConversations, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
 import { useConversationStore } from "@/stores/useConversationStore"
 import type { MessageListType, MarkReadResponse } from "@/types/chat"
 import type { MinimalUser } from "@/types/search"
@@ -25,7 +25,7 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
   const [search, setSearch] = useState("")
   const [timeRefresh, setTimeRefresh] = useState(0) // Add state variable to force timestamp updates
   const [createMessageOpen, setCreateMessageOpen] = useState(false)
-  const { conversations, setConversations, updateConversation, markAsRead } = useConversationStore()
+  const { conversations, setConversations, markAsRead } = useConversationStore()
 
   // Function to refresh conversations periodically
   const refreshConversations = useCallback(async () => {
@@ -313,63 +313,8 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
     }
   }, [timeRefresh, parseTimestamp]);
 
-  // Listen for real-time updates via WebSocket
-  useEffect(() => {
-    console.log("🔌 Setting up WebSocket connection for real-time updates");
-    const socket = createConversationsSocket();
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("📩 WebSocket message received in message-list:", data);
-
-        // Handle both scenarios: with type field and without type field
-        if (
-          // From Django Channels with type field retained
-          (data.type === "chat_update" && data.chat_id) ||
-          // From Django Channels consumer directly (type field is stripped)
-          (data.chat_id && data.message && data.timestamp && data.sender)
-        ) {
-          // Extract partner_id from sender if available
-          const partner_id = data.sender?.id || 0;
-          console.log("🔄 Updating conversation with partner_id:", partner_id);
-          
-          // Update conversation in the store
-          updateConversation({
-            chat_id: data.chat_id,
-            message: data.message,
-            timestamp: data.timestamp,
-            sender: {
-              ...data.sender,
-              id: partner_id // Make sure to pass the sender's ID
-            },
-            is_sender: !!data.is_sender,
-            unread_count: data.unread_count ?? 0
-          });
-
-          // Update timestamps to reflect the new message time
-          setTimeRefresh(prev => prev + 1);
-
-          // If this is the active chat, mark it as read immediately
-          if (activeChat && activeChat.id === data.chat_id) {
-            console.log("✅ Auto-marking active chat as read:", data.chat_id);
-            markConversationAsReadBoth(data.chat_id);
-          }
-        }
-      } catch (error) {
-        console.error("Error processing WebSocket message:", error);
-      }
-    };
-
-    socket.onclose = () => {
-      console.log("WebSocket connection closed, will reconnect on next render");
-    };
-
-    return () => {
-      console.log("🔌 Closing WebSocket connection");
-      socket.close();
-    };
-  }, [updateConversation, activeChat, markConversationAsReadBoth, setTimeRefresh]);
+  // Note: WebSocket connection is now handled globally by WebSocketProvider
+  // This ensures real-time updates work everywhere, not just on the messages page
 
   const filtered = conversations.filter((c) =>
     c.username?.toLowerCase().includes(search.toLowerCase())

@@ -25,6 +25,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useConversationStore } from "@/stores/useConversationStore"
+import { useWebSocket } from "@/components/websocket-provider"
+import { useEffect } from "react"
 
 const navigation = [
   { name: "Home", href: "/", icon: Home },
@@ -41,11 +44,32 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, logout } = useAuth()
+  const { isConnected, isConnecting } = useWebSocket()
 
   const handleLogout = () => {
     logout()
     router.push("/login")
   }
+
+  const { conversations } = useConversationStore()
+
+  const totalUnreadMessages = conversations.reduce(
+    (sum, convo) => sum + convo.unread_count,
+    0
+  )
+
+  // Effect to update browser title with unread count
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const originalTitle = 'Instagram'
+      
+      if (isAuthenticated && totalUnreadMessages > 0) {
+        document.title = `(${totalUnreadMessages}) ${originalTitle}`
+      } else {
+        document.title = originalTitle
+      }
+    }
+  }, [totalUnreadMessages, isAuthenticated])
 
   // If not authenticated, don't show the sidebar
   if (
@@ -65,6 +89,16 @@ export function Sidebar() {
         <nav className="flex-1 px-3 mt-8 space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href
+            const showDot =
+              (item.name === "Messages" && totalUnreadMessages > 0)
+              // (item.name === "Notifications" && unreadNotificationCount > 0)
+            
+            // Enhanced dot styling for better visibility
+            const dotClass = cn(
+              "absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full",
+              "bg-red-500 border border-background",
+              "animate-pulse" // Add subtle pulse animation for new messages
+            )
             return (
               <Link
                 key={item.name}
@@ -74,12 +108,39 @@ export function Sidebar() {
                   isActive ? "bg-muted" : "",
                 )}
               >
+                <div className="relative mr-3">
                 <item.icon className={cn("w-6 h-6 mr-3", isActive ? "fill-current" : "")} />
+                  {showDot && (
+                    <>
+                      <span className={dotClass} />
+                      {/* Show unread count for messages */}
+                      {item.name === "Messages" && totalUnreadMessages > 0 && totalUnreadMessages < 100 && (
+                        <span className="absolute -top-2 -right-2 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border border-background">
+                          {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
                 {item.name}
               </Link>
             )
           })}
         </nav>
+        
+        {/* WebSocket Connection Status - show when disconnected or connecting */}
+        {isAuthenticated && (!isConnected || isConnecting) && (
+          <div className="px-3 py-2">
+            <div className="flex items-center text-xs text-muted-foreground bg-muted/50 rounded-lg px-2 py-1">
+              <div className={cn(
+                "w-2 h-2 rounded-full mr-2",
+                isConnecting ? "bg-yellow-500 animate-pulse" : "bg-red-500"
+              )} />
+              {isConnecting ? "Connecting..." : "Reconnecting..."}
+            </div>
+          </div>
+        )}
+        
         <div className="flex-shrink-0 px-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
