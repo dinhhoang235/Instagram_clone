@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { WebSocketProvider } from "@/components/websocket-provider"
+import { NotificationProvider } from "@/components/notification-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,7 +27,9 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <WebSocketProvider>
-              {children}
+              <NotificationProvider>
+                {children}
+              </NotificationProvider>
             </WebSocketProvider>
           </AuthProvider>
         </ThemeProvider>

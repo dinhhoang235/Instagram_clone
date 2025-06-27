@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useConversationStore } from "@/stores/useConversationStore"
+import { useNotificationStore } from "@/stores/useNotificationStore"
 import { useWebSocket } from "@/components/websocket-provider"
 import { useEffect } from "react"
 
@@ -52,6 +53,7 @@ export function Sidebar() {
   }
 
   const { conversations } = useConversationStore()
+  const { unreadCount: unreadNotificationCount } = useNotificationStore()
 
   const totalUnreadMessages = conversations.reduce(
     (sum, convo) => sum + convo.unread_count,
@@ -62,14 +64,15 @@ export function Sidebar() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const originalTitle = 'Instagram'
+      const totalUnread = totalUnreadMessages + unreadNotificationCount
       
-      if (isAuthenticated && totalUnreadMessages > 0) {
-        document.title = `(${totalUnreadMessages}) ${originalTitle}`
+      if (isAuthenticated && totalUnread > 0) {
+        document.title = `(${totalUnread}) ${originalTitle}`
       } else {
         document.title = originalTitle
       }
     }
-  }, [totalUnreadMessages, isAuthenticated])
+  }, [totalUnreadMessages, unreadNotificationCount, isAuthenticated])
 
   // If not authenticated, don't show the sidebar
   if (
@@ -90,8 +93,8 @@ export function Sidebar() {
           {navigation.map((item) => {
             const isActive = pathname === item.href
             const showDot =
-              (item.name === "Messages" && totalUnreadMessages > 0)
-              // (item.name === "Notifications" && unreadNotificationCount > 0)
+              (item.name === "Messages" && totalUnreadMessages > 0) ||
+              (item.name === "Notifications" && unreadNotificationCount > 0)
             
             // Enhanced dot styling for better visibility
             const dotClass = cn(
@@ -117,6 +120,12 @@ export function Sidebar() {
                       {item.name === "Messages" && totalUnreadMessages > 0 && totalUnreadMessages < 100 && (
                         <span className="absolute -top-2 -right-2 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border border-background">
                           {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
+                        </span>
+                      )}
+                      {/* Show unread count for notifications */}
+                      {item.name === "Notifications" && unreadNotificationCount > 0 && unreadNotificationCount < 100 && (
+                        <span className="absolute -top-2 -right-2 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border border-background">
+                          {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                         </span>
                       )}
                     </>
