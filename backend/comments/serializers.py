@@ -2,6 +2,8 @@
 from rest_framework import serializers
 from .models import Comment
 from users.serializers import ProfileShortSerializer
+from django.utils.timesince import timesince
+
 
 class ReplySerializer(serializers.ModelSerializer):
     user = ProfileShortSerializer(source='user.profile',read_only=True)
@@ -18,7 +20,6 @@ class ReplySerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'text', 'likes', 'is_liked', 'timeAgo', 'parent', 'post']
 
     def get_timeAgo(self, obj):
-        from django.utils.timesince import timesince
         return timesince(obj.time_created) + " ago"
     
     def get_is_liked(self, obj):
@@ -46,7 +47,6 @@ class CommentSerializer(serializers.ModelSerializer):
         return []
 
     def get_timeAgo(self, obj):
-        from django.utils.timesince import timesince
         return timesince(obj.time_created) + " ago"
     
     def get_is_liked(self, obj):
