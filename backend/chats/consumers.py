@@ -4,6 +4,8 @@ from .models import Message, Thread
 from asgiref.sync import sync_to_async
 from django.utils.timezone import localtime
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.models import User
+
 import logging
 
 logger = logging.getLogger("django")
@@ -151,7 +153,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             sender_username = event.get('sender')
             if sender_username:
                 try:
-                    from django.contrib.auth.models import User
                     sender = await sync_to_async(User.objects.get)(username=sender_username)
                     event['sender_id'] = sender.id
                 except Exception as e:
