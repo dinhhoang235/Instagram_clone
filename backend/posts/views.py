@@ -28,8 +28,8 @@ class PostViewSet(viewsets.ModelViewSet):
     def feed(self, request):
         user = request.user
         # Lấy danh sách ID người dùng mà mình đang follow + chính mình
-        following_ids = set(user.following.values_list('following__id', flat=True))
-        following_ids.add(user.id)  # thêm bài viết của chính mình
+        following_ids = list(user.following.values_list('following__id', flat=True))
+        following_ids.append(user.id)  # thêm bài viết của chính mình
         # Lấy post từ danh sách này
         posts = Post.objects.filter(
             user__id__in=following_ids
