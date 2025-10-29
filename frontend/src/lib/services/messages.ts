@@ -70,7 +70,6 @@ export function createConversationsSocket(): WebSocket {
   // Properly URL encode the token to handle special characters
   const encodedToken = encodeURIComponent(token);
   const url = `${protocol}://${host}/ws/conversations/?token=${encodedToken}`;
-  console.log("Connecting to Conversations WebSocket:", url);
   
   const socket = new WebSocket(url);
 

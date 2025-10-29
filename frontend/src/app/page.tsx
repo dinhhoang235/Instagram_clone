@@ -4,8 +4,6 @@ import { useEffect } from "react"
 import { Feed } from "@/components/feed"
 // import { Stories } from "@/components/stories"
 import { Sidebar } from "@/components/sidebar"
-import { MessageStatus } from "@/components/message-status"
-import { NotificationStatus } from "@/components/notification-status"
 import { useAuth } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
 
@@ -33,9 +31,6 @@ export default function HomePage() {
         </main>
       </div>
       
-      {/* Real-time status indicators */}
-      <MessageStatus />
-      <NotificationStatus />
     </div>
   )
 }

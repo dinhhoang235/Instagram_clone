@@ -64,25 +64,21 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
   // Function to connect to WebSocket
   const connectWebSocket = React.useCallback(() => {
     if (!isAuthenticated) {
-      console.log("🔌 Not authenticated, skipping WebSocket connection")
       return
     }
 
     // Don't create multiple connections
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log("🔌 WebSocket already connected")
       return
     }
 
     setIsConnecting(true)
 
     try {
-      console.log("🔌 Creating global WebSocket connection for conversations")
       const socket = createConversationsSocket()
       socketRef.current = socket
 
       socket.onopen = () => {
-        console.log("🔌 Global WebSocket connected successfully")
         setIsConnected(true)
         setIsConnecting(false)
         // Clear any existing reconnect timeout
@@ -95,15 +91,12 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          console.log("📩 Global WebSocket message received:", data)
 
           // Handle conversation updates
           if (
             (data.type === "chat_update" && data.chat_id) ||
             (data.chat_id && data.message && data.timestamp && data.sender)
           ) {
-            console.log("🔄 Updating conversation globally via WebSocket")
-            
             // Play notification sound for incoming messages (not sent by current user)
             if (!data.is_sender) {
               playNotificationSound()
@@ -122,19 +115,17 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
             })
           }
         } catch (error) {
-          console.error("Error processing global WebSocket message:", error)
+          console.error("Error processing WebSocket message:", error)
         }
       }
 
       socket.onclose = (event) => {
-        console.log("🔌 Global WebSocket closed:", event.code, event.reason)
         setIsConnected(false)
         setIsConnecting(false)
         
         // Only attempt to reconnect if the connection was closed unexpectedly
         // and we're still authenticated
         if (event.code !== 1000 && isAuthenticated) {
-          console.log("🔌 Attempting to reconnect global WebSocket in 3 seconds...")
           setIsConnecting(true)
           reconnectTimeoutRef.current = setTimeout(() => {
             connectWebSocket()
@@ -143,12 +134,16 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
       }
 
       socket.onerror = (error) => {
-        console.error("🔌 Global WebSocket error:", error)
         setIsConnected(false)
         setIsConnecting(false)
-      }
-
-    } catch (error) {
+        
+        // Try to reconnect after error
+        if (isAuthenticated) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectWebSocket()
+          }, 5000)
+        }
+      }    } catch (error) {
       console.error("Failed to create global WebSocket connection:", error)
       setIsConnected(false)
       setIsConnecting(false)
@@ -157,19 +152,17 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
 
   // Function to disconnect WebSocket
   const disconnectWebSocket = React.useCallback(() => {
-    console.log("🔌 Disconnecting global WebSocket")
-    
     // Clear reconnect timeout
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
     }
 
-    // Close socket
-    if (socketRef.current) {
+    // Close socket only if it's in a valid state
+    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
       socketRef.current.close(1000, "User logged out")
-      socketRef.current = null
     }
+    socketRef.current = null
     
     setIsConnected(false)
   }, [])
@@ -194,7 +187,6 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
       if (document.visibilityState === 'visible' && isAuthenticated) {
         // Reconnect if we're not connected when page becomes visible
         if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-          console.log("🔌 Page visible again, ensuring WebSocket connection")
           connectWebSocket()
         }
       }

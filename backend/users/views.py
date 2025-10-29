@@ -29,12 +29,12 @@ from users.serializers import (
 class CustomTokenObtainPairView(TokenViewBase):
     serializer_class = CustomTokenObtainPairSerializer
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserRegistrationView(APIView):
     """
     Dedicated view for user registration
     """
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     
     def post(self, request, *args, **kwargs):
         serializer = UserRegistrationSerializer(data=request.data)

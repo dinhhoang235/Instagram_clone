@@ -2,19 +2,6 @@
 
 A full-stack Instagram clone built with modern web technologies, featuring real-time chat, notifications, and all the core Instagram functionalities.
 
-## 📋 Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Running the Application](#running-the-application)
-- [API Documentation](#api-documentation)
-- [Contributing](#contributing)
-- [License](#license)
-
 ## ✨ Features
 
 ### Core Features
@@ -169,20 +156,30 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Database Configuration
-MYSQL_ROOT_PASSWORD=rootpassword
-MYSQL_DATABASE=instagram_db
-MYSQL_USER=instagram_user
-MYSQL_PASSWORD=instagram_password
+DB_ENGINE=django.db.backends.mysql
+DB_NAME=instagram_clone
+DB_USER=admin
+DB_PASSWORD=admin123
+DB_HOST=db
+DB_PORT=3306
 
-# Database URL for Django
-DATABASE_URL=mysql://instagram_user:instagram_password@db:3306/instagram_db
+MYSQL_ROOT_PASSWORD=admin123
+MYSQL_DATABASE=instagram_clone
+MYSQL_USER=admin
+MYSQL_PASSWORD=admin123
+
+# Database URL for Django (alternative to individual DB vars)
+DATABASE_URL=mysql://admin:admin123@db:3306/instagram_clone
 
 # Redis Configuration
 REDIS_URL=redis://redis:6379/0
 
+# Backend Configuration
+DJANGO_PORT=8000
+
 # Frontend Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-NEXT_PUBLIC_WS_HOST=localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost/api
+NEXT_PUBLIC_WS_HOST=localhost
 ```
 
 ## 🚀 Running the Application
@@ -195,13 +192,58 @@ NEXT_PUBLIC_WS_HOST=localhost:8000
    ```
 
 2. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000/api
-   - Admin Panel: http://localhost:8000/admin
+   - Frontend: http://localhost
+   - Backend API: http://localhost/api
+   - Admin Panel: http://localhost/admin
 
 3. **Create a superuser** (optional)
    ```bash
    docker-compose exec backend python manage.py createsuperuser
+   ```
+
+### Testing Nginx Configuration
+
+After setting up nginx as a reverse proxy, test the following to ensure proper functionality:
+
+1. **Check nginx configuration syntax**
+   ```bash
+   docker-compose exec nginx nginx -t
+   ```
+
+2. **Verify services are running**
+   ```bash
+   docker-compose ps
+   ```
+
+3. **Test basic nginx connectivity**
+   ```bash
+   curl -I http://localhost
+   ```
+
+4. **Test API endpoints (proxied to backend)**
+   ```bash
+   curl http://localhost/api/users/  # Replace with actual endpoint
+   ```
+
+5. **Test frontend access**
+   ```bash
+   curl -I http://localhost/
+   ```
+
+6. **Test static/media files**
+   ```bash
+   curl http://localhost/static/admin/css/base.css
+   ```
+
+7. **Test WebSocket connections (for chat/notifications)**
+   ```bash
+   # Install wscat if needed: npm install -g wscat
+   wscat -c ws://localhost/ws/chat/
+   ```
+
+8. **Check nginx logs for errors**
+   ```bash
+   docker-compose logs nginx
    ```
 
 ### Local Development

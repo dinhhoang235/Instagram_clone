@@ -30,7 +30,6 @@ export function connectNotificationSocket(): WebSocket {
 
     const encodedToken = encodeURIComponent(token);
     const url = `${protocol}://${host}/ws/notifications/?token=${encodedToken}`;
-    console.log("Connecting to Notification WebSocket:", url);
 
     const socket = new WebSocket(url);
 

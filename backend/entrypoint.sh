@@ -22,5 +22,5 @@ if [ -f setup_project.py ]; then
   python setup_project.py
 fi
 
-echo "Starting Daphne server..."
-exec daphne backend.asgi:application --bind 0.0.0.0 --port 8000
+echo "Starting Uvicorn server..."
+exec uvicorn backend.asgi:application --host 0.0.0.0 --port 8000 --ws websockets

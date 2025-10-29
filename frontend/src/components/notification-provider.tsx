@@ -70,25 +70,21 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   // Function to connect to WebSocket
   const connectNotifications = React.useCallback(() => {
     if (!isAuthenticated) {
-      console.log("🔔 Not authenticated, skipping notification WebSocket connection")
       return
     }
 
     // Don't create multiple connections
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log("🔔 Notification WebSocket already connected")
       return
     }
 
     setIsConnecting(true)
 
     try {
-      console.log("🔔 Creating notification WebSocket connection")
       const socket = connectNotificationSocket()
       socketRef.current = socket
 
       socket.onopen = () => {
-        console.log("🔔 Notification WebSocket connected successfully")
         setIsConnected(true)
         setIsConnecting(false)
         // Clear any existing reconnect timeout
@@ -101,7 +97,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as NotificationType
-          console.log("🔔 New notification received:", data)
 
           // Add notification to store
           addNotification(data)
@@ -119,19 +114,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           }
 
         } catch (error) {
-          console.error("Error processing notification WebSocket message:", error)
+          console.error("Error processing notification:", error)
         }
       }
 
       socket.onclose = (event) => {
-        console.log("🔔 Notification WebSocket closed:", event.code, event.reason)
         setIsConnected(false)
         setIsConnecting(false)
         
         // Only attempt to reconnect if the connection was closed unexpectedly
         // and we're still authenticated
         if (event.code !== 1000 && isAuthenticated) {
-          console.log("🔔 Attempting to reconnect notification WebSocket in 3 seconds...")
           reconnectTimeoutRef.current = setTimeout(() => {
             connectNotifications()
           }, 3000)
@@ -139,15 +132,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
       socket.onerror = (error) => {
-        console.error("🔔 Notification WebSocket error:", error)
-        console.log("🔔 This might be because the notification WebSocket endpoint is not available")
-        console.log("🔔 Make sure the backend server is running and notifications are properly configured")
         setIsConnected(false)
         setIsConnecting(false)
         
         // Try to reconnect after error
         if (isAuthenticated) {
-          console.log("🔔 Attempting to reconnect after error in 5 seconds...")
           reconnectTimeoutRef.current = setTimeout(() => {
             connectNotifications()
           }, 5000)
@@ -155,7 +144,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
     } catch (error) {
-      console.error("Failed to create notification WebSocket connection:", error)
+      console.error("Failed to create WebSocket connection:", error)
       setIsConnecting(false)
     }
   }, [isAuthenticated, addNotification, playNotificationSound])
@@ -182,7 +171,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     // Cleanup on unmount
     return () => {
-      if (socketRef.current) {
+      if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
         socketRef.current.close(1000, "Component unmounted")
       }
       if (reconnectTimeoutRef.current) {
