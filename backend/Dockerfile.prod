@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p /app/staticfiles /app/media
+RUN mkdir -p /app/staticfiles /app/media /app/static/images
 
 # Collect static files
 RUN python manage.py collectstatic --noinput || true
