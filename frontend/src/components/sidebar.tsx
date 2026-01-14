@@ -83,7 +83,9 @@ export function Sidebar() {
   }
 
   return (
-    <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background">
+    <>
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background">
       <div className="flex flex-col flex-1 min-h-0 pt-5 pb-4">
         <div className="flex items-center flex-shrink-0 px-6">
           <Instagram className="w-8 h-8" />
@@ -173,6 +175,92 @@ export function Sidebar() {
           </DropdownMenu>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
+        <nav className="flex justify-around items-center h-16 px-2">
+          {navigation.slice(0, 5).map((item) => {
+            const isActive = pathname === item.href
+            const showDot =
+              (item.name === "Messages" && totalUnreadMessages > 0) ||
+              (item.name === "Notifications" && unreadNotificationCount > 0)
+            
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center flex-1 py-2 transition-colors",
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                <div className="relative">
+                  <item.icon className={cn("w-6 h-6", isActive ? "fill-current" : "")} />
+                  {showDot && (
+                    <>
+                      {/* Show unread count badge */}
+                      {item.name === "Messages" && totalUnreadMessages > 0 && (
+                        <span className="absolute -top-2 -right-2 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border border-background">
+                          {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
+                        </span>
+                      )}
+                      {item.name === "Notifications" && unreadNotificationCount > 0 && (
+                        <span className="absolute -top-2 -right-2 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border border-background">
+                          {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+          
+          {/* More Menu for Mobile */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex flex-col items-center justify-center flex-1 py-2 text-muted-foreground">
+                <Menu className="w-6 h-6" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 mb-2">
+              {navigation.slice(5).map((item) => (
+                <DropdownMenuItem key={item.name} asChild>
+                  <Link href={item.href} className="flex items-center cursor-pointer">
+                    <item.icon className="w-4 h-4 mr-2" />
+                    {item.name}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem>Your activity</DropdownMenuItem>
+              <DropdownMenuItem>Saved</DropdownMenuItem>
+              <DropdownMenuItem>Switch appearance</DropdownMenuItem>
+              <DropdownMenuItem>Report a problem</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-red-500">
+                <LogOut className="w-4 h-4 mr-2" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </nav>
+        
+        {/* WebSocket Connection Status for Mobile */}
+        {isAuthenticated && (!isConnected || isConnecting) && (
+          <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 px-3 py-1">
+            <div className="flex items-center text-xs text-muted-foreground bg-muted/90 backdrop-blur-sm rounded-full px-3 py-1 shadow-lg">
+              <div className={cn(
+                "w-2 h-2 rounded-full mr-2",
+                isConnecting ? "bg-yellow-500 animate-pulse" : "bg-red-500"
+              )} />
+              {isConnecting ? "Connecting..." : "Reconnecting..."}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
