@@ -1,162 +1,56 @@
 # Instagram Clone
 
-A full-stack Instagram clone built with modern web technologies, featuring real-time chat, notifications, and all the core Instagram functionalities.
+A full-stack Instagram clone with real-time messaging, notifications, posts, stories, and social features.
 
 ## ✨ Features
 
-### Core Features
-- **User Authentication & Authorization**
-  - User registration and login with JWT tokens
-  - Profile management with customizable privacy settings
-  - Profile verification status
-
-- **Posts & Media**
-  - Image upload and sharing
-  - Caption support with hashtag detection
-  - Location tagging
-  - Like/unlike functionality
-  - Comments system with threaded replies
-  - Automatic image resizing and optimization
-
-- **Social Features**
-  - Follow/unfollow users
-  - User discovery and search
-  - Hashtag search and trending
-  - User mentions and tagging
-  - Suggested users
-
-- **Real-time Features**
-  - Direct messaging with WebSocket support
-  - Real-time notifications
-  - Live chat threads
-  - Message read status
-  - Online status indicators
-
-- **Privacy & Settings**
-  - Private/public account settings
-  - Comment permissions (everyone/followers/no one)
-  - Message permissions
-  - Story resharing controls
-  - Activity status visibility
-
-### Additional Features
-- **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **Dark/Light Mode**: Theme switching support
-- **Modern UI**: Built with Radix UI components
-- **Image Optimization**: Automatic image resizing and compression
-- **Real-time Updates**: WebSocket integration for instant updates
+- User authentication (JWT) with profile management
+- Posts with images, comments, likes, and hashtag support
+- Follow/unfollow, user search, and discovery
+- Real-time chat and notifications (WebSocket)
+- Privacy settings (private/public accounts, comment/message permissions)
+- Responsive design with dark/light mode
 
 ## 🚀 Tech Stack
 
-### Backend
-- **Framework**: Django 5.1.2 with Django REST Framework
-- **Database**: MySQL 8.0
-- **Cache/Sessions**: Redis 7
-- **Authentication**: JWT (djangorestframework-simplejwt)
-- **Real-time**: Django Channels with WebSocket support
-- **Image Processing**: Pillow
-- **Container**: Docker
+**Backend**: Django 5.1.2, Django REST Framework, MySQL 8.0, Redis, Django Channels (WebSocket)
+**Frontend**: Next.js 15.3.3, TypeScript, Tailwind CSS, Radix UI
+**DevOps**: Docker, Docker Compose
 
-### Frontend
-- **Framework**: Next.js 15.3.3 with TypeScript
-- **Styling**: Tailwind CSS with custom design system
-- **UI Components**: Radix UI primitives
-- **State Management**: React Context API
-- **HTTP Client**: Axios
-- **Icons**: Lucide React
-- **Date Handling**: Day.js
-- **Notifications**: Sonner
-- **Container**: Docker
+## 📋 Installation
 
-### DevOps & Tools
-- **Containerization**: Docker & Docker Compose
-- **CORS**: django-cors-headers
-- **Environment**: python-dotenv
-- **Development**: Hot reload for both frontend and backend
+**Prerequisites**: Docker & Docker Compose
 
-## 📁 Project Structure
-
-```
-Instagram_clone/
-├── backend/                    # Django backend
-│   ├── backend/               # Main Django project
-│   │   ├── settings.py        # Django settings
-│   │   ├── urls.py           # URL routing
-│   │   ├── routers.py        # API routers
-│   │   └── middleware.py     # Custom middleware
-│   ├── users/                # User management app
-│   ├── posts/                # Posts and media app
-│   ├── comments/             # Comments system
-│   ├── chats/                # Real-time messaging
-│   ├── notifications/        # Notification system
-│   ├── search/               # Search functionality
-│   ├── media/                # User uploaded files
-│   ├── requirements.txt      # Python dependencies
-│   └── Dockerfile           # Backend container config
-├── frontend/                 # Next.js frontend
-│   ├── src/
-│   │   ├── app/             # App router pages
-│   │   │   ├── login/       # Authentication pages
-│   │   │   ├── register/    # User registration
-│   │   │   ├── profile/     # User profiles
-│   │   │   ├── messages/    # Direct messaging
-│   │   │   ├── create/      # Post creation
-│   │   │   ├── explore/     # Discovery page
-│   │   │   └── search/      # Search functionality
-│   │   ├── components/      # React components
-│   │   │   ├── ui/          # Reusable UI components
-│   │   │   ├── feed.tsx     # Main feed
-│   │   │   ├── post.tsx     # Post component
-│   │   │   ├── chat.tsx     # Chat interface
-│   │   │   └── sidebar.tsx  # Navigation sidebar
-│   │   ├── lib/             # Utility functions
-│   │   ├── stores/          # State management
-│   │   └── types/           # TypeScript types
-│   ├── package.json         # Node dependencies
-│   └── Dockerfile          # Frontend container config
-├── docker-compose.yml       # Multi-container orchestration
-└── README.md               # Project documentation
-```
-
-## 📋 Prerequisites
-
-- **Docker** (v20.10+)
-- **Docker Compose** (v2.0+)
-- **Node.js** (v18+) - for local development
-- **Python** (v3.10+) - for local development
-
-## 🛠 Installation
-
-1. **Clone the repository**
+1. **Clone and setup**
    ```bash
    git clone https://github.com/yourusername/instagram-clone.git
    cd instagram-clone
-   ```
-
-2. **Create environment file**
-   ```bash
    cp .env.example .env
    ```
 
-3. **Configure environment variables** (see [Environment Variables](#environment-variables))
+2. **Configure `.env`** (see example below)
 
-4. **Build and start with Docker Compose**
+3. **Start application**
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
+
+4. **Access**
+   - Frontend: http://localhost
+   - Backend API: http://localhost/api
+   - Admin: http://localhost/admin
 
 ## 🔐 Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file:
 
 ```env
-# Django Settings
-SECRET_KEY=your-secret-key-here
+# Django
+SECRET_KEY=your-secret-key
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-# Database Configuration
-DB_ENGINE=django.db.backends.mysql
+# Database
 DB_NAME=instagram_clone
 DB_USER=admin
 DB_PASSWORD=admin123
@@ -168,201 +62,36 @@ MYSQL_DATABASE=instagram_clone
 MYSQL_USER=admin
 MYSQL_PASSWORD=admin123
 
-# Database URL for Django (alternative to individual DB vars)
-DATABASE_URL=mysql://admin:admin123@db:3306/instagram_clone
-
-# Redis Configuration
+# Redis
 REDIS_URL=redis://redis:6379/0
 
-# Backend Configuration
-DJANGO_PORT=8000
-
-# Frontend Configuration
+# Frontend
 NEXT_PUBLIC_API_URL=http://localhost/api
 NEXT_PUBLIC_WS_HOST=localhost
 ```
 
-## 🚀 Running the Application
+## 📡 API Endpoints
 
-### Using Docker Compose (Recommended)
+**Auth**: `POST /api/register/`, `POST /api/token/`, `POST /api/token/refresh/`
+**Core**: `GET/POST /api/posts/`, `GET /api/users/{id}/`, `POST /api/posts/{id}/like/`
+**Chat**: `GET /api/chats/`, `POST /api/chats/{id}/messages/`
+**WebSocket**: `ws://localhost/ws/chat/{thread_id}/`, `ws://localhost/ws/notifications/{user_id}/`
 
-1. **Start all services**
-   ```bash
-   docker-compose up
-   ```
+## 🔧 Development
 
-2. **Access the application**
-   - Frontend: http://localhost
-   - Backend API: http://localhost/api
-   - Admin Panel: http://localhost/admin
-
-3. **Create a superuser** (optional)
-   ```bash
-   docker-compose exec backend python manage.py createsuperuser
-   ```
-
-### Testing Nginx Configuration
-
-After setting up nginx as a reverse proxy, test the following to ensure proper functionality:
-
-1. **Check nginx configuration syntax**
-   ```bash
-   docker-compose exec nginx nginx -t
-   ```
-
-2. **Verify services are running**
-   ```bash
-   docker-compose ps
-   ```
-
-3. **Test basic nginx connectivity**
-   ```bash
-   curl -I http://localhost
-   ```
-
-4. **Test API endpoints (proxied to backend)**
-   ```bash
-   curl http://localhost/api/users/  # Replace with actual endpoint
-   ```
-
-5. **Test frontend access**
-   ```bash
-   curl -I http://localhost/
-   ```
-
-6. **Test static/media files**
-   ```bash
-   curl http://localhost/static/admin/css/base.css
-   ```
-
-7. **Test WebSocket connections (for chat/notifications)**
-   ```bash
-   # Install wscat if needed: npm install -g wscat
-   wscat -c ws://localhost/ws/chat/
-   ```
-
-8. **Check nginx logs for errors**
-   ```bash
-   docker-compose logs nginx
-   ```
-
-### Local Development
-
-#### Backend Setup
+**Create superuser**:
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
+docker compose exec backend python manage.py createsuperuser
 ```
 
-#### Frontend Setup
+**Migrations**:
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose exec backend python manage.py makemigrations
+docker compose exec backend python manage.py migrate
 ```
 
-## 📡 API Documentation
-
-### Authentication Endpoints
-- `POST /api/register/` - User registration
-- `POST /api/token/` - Login (obtain JWT tokens)
-- `POST /api/token/refresh/` - Refresh JWT token
-
-### Core Endpoints
-- `GET /api/posts/` - List posts (feed)
-- `POST /api/posts/` - Create new post
-- `GET /api/users/` - List users
-- `GET /api/users/{id}/` - User profile
-- `POST /api/posts/{id}/like/` - Like/unlike post
-- `GET /api/chats/` - Chat threads
-- `POST /api/chats/{id}/messages/` - Send message
-- `GET /api/search/` - Search users and content
-
-### WebSocket Endpoints
-- `ws://localhost:8000/ws/chat/{thread_id}/` - Real-time chat
-- `ws://localhost:8000/ws/notifications/{user_id}/` - Real-time notifications
-
-## 🎨 Key Features Implementation
-
-### Real-time Chat
-- WebSocket connections using Django Channels
-- Message threading and read status
-- Online presence indicators
-- File sharing support
-
-### Image Processing
-- Automatic image resizing and optimization
-- Support for multiple image formats
-- Efficient storage and serving
-
-### Responsive Design
-- Mobile-first approach
-- Adaptive layouts for all screen sizes
-- Touch-friendly interactions
-
-### Performance Optimizations
-- Redis caching for sessions and real-time features
-- Image optimization and lazy loading
-- Efficient database queries with proper indexing
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔧 Development Notes
-
-### Database Migrations
+**View logs**:
 ```bash
-# Create migrations
-docker-compose exec backend python manage.py makemigrations
-
-# Apply migrations
-docker-compose exec backend python manage.py migrate
+docker compose logs backend
+docker compose logs frontend
 ```
-
-### Debugging
-- Backend logs: `docker-compose logs backend`
-- Frontend logs: `docker-compose logs frontend`
-- Database access: `docker-compose exec db mysql -u instagram_user -p instagram_db`
-
-### Testing
-```bash
-# Backend tests
-docker-compose exec backend python manage.py test
-
-# Frontend tests (when implemented)
-docker-compose exec frontend npm test
-```
-
-## 🚨 Known Issues
-
-- File upload size limits may need adjustment for production
-- WebSocket connections might need additional configuration for deployment
-- Consider implementing image CDN for production use
-
-## 🔮 Future Enhancements
-
-- [ ] Stories feature
-- [ ] Video upload support
-- [ ] Advanced search filters
-- [ ] Push notifications
-- [ ] Two-factor authentication
-- [ ] API rate limiting
-- [ ] Content moderation
-- [ ] Analytics dashboard
-
----
-
-**Built with ❤️ by [Your Name]**
