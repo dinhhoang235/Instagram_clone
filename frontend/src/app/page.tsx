@@ -25,7 +25,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 max-w-6xl ml-auto mr-20 px-4 py-8 lg:py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
+        <main className="flex-1 max-w-6xl mx-auto lg:ml-auto lg:mr-20 px-4 py-8 lg:py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
           {/* <Stories /> */}
           <Feed />
         </main>
