@@ -55,8 +55,18 @@ export const useConversationStore = create<ConversationStore>()(
           online: convo.online,
           partner_id: convo.partner_id, // Preserve the partner_id
         }
-        updated.splice(index, 1)
-        return { conversations: [updatedConvo, ...updated] }
+        
+        // Only move to top if there's a new unread message from the other person
+        // If it's our message or if we're just updating for some other reason, keep it in place
+        if (unreadCount > 0 && !incoming.is_sender) {
+          // New unread message from other person - move to top
+          updated.splice(index, 1)
+          return { conversations: [updatedConvo, ...updated] }
+        } else {
+          // No new unread message, or it's our message - keep it in same position
+          updated[index] = updatedConvo
+          return { conversations: updated }
+        }
       } else {
         // If sender information includes an id, use it as partner_id
         const sender_id = incoming.sender?.id || 0;

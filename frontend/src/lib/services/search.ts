@@ -23,9 +23,12 @@ export const deleteRecentSearch = async (userId: number): Promise<void> => {
 }
 
 // search for users by username
-export const searchUsers = async (query: string): Promise<MinimalUser[]> => {
+export const searchUsers = async (query: string, mutualOnly: boolean = false): Promise<MinimalUser[]> => {
   const res = await api.get<MinimalUser[]>("/search/users/", {
-    params: { q: query }
+    params: { 
+      q: query,
+      mutual: mutualOnly ? "true" : "false"
+    }
   })
   return res.data
 }

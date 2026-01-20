@@ -105,6 +105,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if data.get("type") == "mark_read":
             logger.info(f"User {user.id} ({user.username}) marking messages as read in thread {self.thread_id}")
             await self.mark_messages_as_read(user)
+            
+            # Send a mark_read update to the conversation list consumer
+            # This will update the conversation list UI in real-time
+            thread_users = await self.get_thread_users()
+            for u in thread_users:
+                unread_count = await self.get_unread_count(self.thread_id, u)
+                await self.channel_layer.group_send(
+                    f"conversations_{u.id}",
+                    {
+                        "type": "mark_read_update",
+                        "chat_id": self.thread_id,
+                        "unread_count": unread_count,
+                        "reader_id": user.id,
+                    }
+                )
             return
 
         text = data.get("text", "").strip()
@@ -191,6 +206,18 @@ class ConversationConsumer(AsyncWebsocketConsumer):
                 await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
         except Exception as e:
             logger.error(f"ConversationConsumer disconnect error: {str(e)}")
+
+    async def mark_read_update(self, event):
+        """Handle mark_read updates from chat consumer"""
+        try:
+            await self.send(text_data=json.dumps({
+                "type": "mark_read_update",
+                "chat_id": event["chat_id"],
+                "unread_count": event["unread_count"],
+                "reader_id": event["reader_id"]
+            }))
+        except Exception as e:
+            logger.error(f"ConversationConsumer mark_read_update error: {str(e)}")
 
     async def chat_update(self, event):
         try:

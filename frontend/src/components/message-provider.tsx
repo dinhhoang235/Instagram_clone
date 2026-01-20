@@ -92,8 +92,27 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
         try {
           const data = JSON.parse(event.data)
 
+          // Handle mark_read_update events to update conversation list immediately
+          if (data.type === "mark_read_update" && typeof data.chat_id !== 'undefined') {
+            console.log("📖 Received mark_read_update event for chat:", data.chat_id, "unread_count:", data.unread_count);
+            // Update conversation unread count in the store to show it's been read
+            const { markAsRead } = useConversationStore.getState();
+            if (data.unread_count === 0) {
+              // Only mark as read if unread count is 0
+              markAsRead(data.chat_id);
+            }
+          }
+          // Handle mark_read events to update conversation list immediately
+          // This ensures the conversation no longer appears bold/unread when user opens the chat
+          else if (data.type === "mark_read" && data.chat_id) {
+            console.log("📖 Received mark_read event for chat:", data.chat_id);
+            // Mark conversation as read in the store to update UI immediately
+            // This is called by the useConversationStore.markAsRead method
+            const { markAsRead } = useConversationStore.getState();
+            markAsRead(data.chat_id);
+          }
           // Handle conversation updates
-          if (
+          else if (
             (data.type === "chat_update" && data.chat_id) ||
             (data.chat_id && data.message && data.timestamp && data.sender)
           ) {
@@ -133,7 +152,7 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
         }
       }
 
-      socket.onerror = (error) => {
+      socket.onerror = () => {
         setIsConnected(false)
         setIsConnecting(false)
         

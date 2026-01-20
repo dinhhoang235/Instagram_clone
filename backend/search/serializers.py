@@ -27,11 +27,12 @@ class RecentSearchUserSerializer(serializers.ModelSerializer):
 class MinimalUserSerializer(serializers.Serializer):
     id = serializers.IntegerField(source="user.id")
     username = serializers.CharField(source="user.username")
+    full_name = serializers.CharField()
     avatar = serializers.SerializerMethodField()
     
     class Meta:
         model = Profile
-        fields = ["id", "username", "avatar"]
+        fields = ["id", "username", "full_name", "avatar"]
 
     def get_avatar(self, obj):
         request = self.context.get('request')

@@ -5,13 +5,15 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { MessageListType } from "@/types/chat"
+import { ArrowLeft } from "lucide-react"
 
 interface Props {
   user: MinimalUser
   onSent: (chat: MessageListType) => void
+  onBack?: () => void
 }
 
-export function SendFirstMessageView({ user, onSent }: Props) {
+export function SendFirstMessageView({ user, onSent, onBack }: Props) {
   const [text, setText] = useState("")
 
   console.log("📝 SendFirstMessageView rendered for user:", user.username);
@@ -32,7 +34,7 @@ export function SendFirstMessageView({ user, onSent }: Props) {
         id: res.thread_id,
         username: res.partner.username,
         avatar: res.partner.avatar ?? user.avatar,
-        lastMessage: text.trim(),
+        lastMessage: `You: ${text.trim()}`,
         time: new Date().toISOString(),
         online: false,
         unread_count: 0,
@@ -62,17 +64,28 @@ export function SendFirstMessageView({ user, onSent }: Props) {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-6 bg-background">
+    <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900">
       {/* Header with user info */}
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b">
-        <Avatar className="w-12 h-12">
+      <div className="flex items-center gap-3 p-4 border-b">
+        {/* Back button for mobile */}
+        {onBack && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="lg:hidden -ml-2"
+            onClick={onBack}
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </Button>
+        )}
+        <Avatar className="w-10 h-10">
           <AvatarImage src={user.avatar || "/placeholder-user.jpg"} />
         </Avatar>
-        <div className="font-medium text-lg">{user.username}</div>
+        <div className="font-semibold">{user.username}</div>
       </div>
       
       {/* Message input area at the bottom */}
-      <div className="flex-1 flex flex-col justify-end">
+      <div className="flex-1 flex flex-col justify-end p-6">
         <div className="space-y-3">
           <Input
             value={text}

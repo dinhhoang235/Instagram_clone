@@ -4,8 +4,9 @@ import React, { useEffect, useRef, useState, useCallback } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Phone, Video, Info, Smile, ImageIcon, Send, Heart } from "lucide-react"
+import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft } from "lucide-react"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
+import { useConversationStore } from "@/stores/useConversationStore"
 import type { ChatProps, MessageType } from "@/types/chat"
 
 const PAGE_SIZE = 20
@@ -17,16 +18,21 @@ export function Chat({
   online,
   currentUserId,
   partnerId,
-}: ChatProps & { currentUserId: number; partnerId: number }) {
+  fullName,
+  onBack,
+}: ChatProps & { currentUserId: number; partnerId: number; onBack?: () => void }) {
   const [messages, setMessages] = useState<MessageType[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isConnected, setIsConnected] = useState(false)
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
 
   const socketRef = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const hasMarkedAsReadRef = useRef<boolean>(false) // Flag to prevent marking as read multiple times
 
   const sendMarkRead = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -34,27 +40,6 @@ export function Chat({
       socketRef.current.send(JSON.stringify({ type: "mark_read" }))
     }
   }, [socketRef])
-  
-  // Add a function to ensure chat is marked as read (both WebSocket and API)
-  const ensureMarkedAsRead = useCallback(async () => {
-    if (!chatId) return;
-    
-    console.log(`🔖 Ensuring chat ${chatId} is marked as read`);
-    
-    // Mark read through WebSocket for real-time updates
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      console.log("📤 Sending mark_read to server through WebSocket");
-      socketRef.current.send(JSON.stringify({ type: "mark_read" }));
-    }
-    
-    // Mark read through API for persistence
-    try {
-      const result = await markConversationAsRead(chatId);
-      console.log(`✅ Chat ${chatId} marked as read via API:`, result);
-    } catch (error) {
-      console.error(`❌ Error marking chat ${chatId} as read:`, error);
-    }
-  }, [chatId, socketRef])
 
   useEffect(() => {
     async function init() {
@@ -73,79 +58,121 @@ export function Chat({
         setHasMore(true)
       }
 
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+      // Scroll to bottom on initial load
+      setShouldScrollToBottom(true)
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+      }, 0)
       
-      // Mark messages as read with a small delay
+      // Mark messages as read with a small delay - ONLY ONCE per chat
       // This matches Instagram's behavior - doesn't mark messages as read
       // until the user has had a chance to see them
-      setTimeout(async () => {
-        sendMarkRead()
+      if (!hasMarkedAsReadRef.current) {
+        hasMarkedAsReadRef.current = true
         
-        // Also mark conversation as read in the API (persistent storage)
-        try {
-          await ensureMarkedAsRead();
-          console.log("🔖 Initial mark as read for chat:", chatId);
-        } catch (error) {
-          console.error("Failed to mark conversation as read:", error);
-        }
-        
-        // No need to access messages state here, just use the loaded messages
-        const loadedMessages = startOffset === 0 ? firstPage.results : [];
-        
-        // Try to find partner ID from messages
-        for (const msg of loadedMessages) {
-          if (!msg.isOwn && msg.sender_id) {
-          setDetectedPartnerId(msg.sender_id);
-          console.log("⭐ Found partner ID from loaded messages:", msg.sender_id);
-          break;
-        }
+        setTimeout(async () => {
+          // Check if there are any unread messages in the loaded messages
+          const hasUnreadMessages = firstPage.results.some(msg => !msg.isOwn);
+          
+          if (hasUnreadMessages) {
+            console.log("📌 Found unread messages, marking as read");
+            sendMarkRead()
+            
+            // Also mark conversation as read in the API (persistent storage)
+            try {
+              const result = await markConversationAsRead(chatId);
+              console.log("🔖 Marked as read for chat:", chatId, result);
+            } catch (error) {
+              console.error("Failed to mark conversation as read:", error);
+            }
+          } else {
+            console.log("✅ No unread messages, skipping mark as read");
+          }
+        }, 500);
       }
-      }, 500);
+      
+      // No need to access messages state here, just use the loaded messages
+      const loadedMessages = startOffset === 0 ? firstPage.results : [];
+      
+      // Try to find partner ID from messages
+      for (const msg of loadedMessages) {
+        if (!msg.isOwn && msg.sender_id) {
+        setDetectedPartnerId(msg.sender_id);
+        console.log("⭐ Found partner ID from loaded messages:", msg.sender_id);
+        break;
+      }
+    }
     }
 
     if (chatId) {
+      hasMarkedAsReadRef.current = false // Reset flag when chat ID changes
       init()
     }
-  }, [chatId, sendMarkRead, ensureMarkedAsRead])
+  }, [chatId, sendMarkRead])
 
   const loadMoreMessages = useCallback(async () => {
-    if (!hasMore) return
+    if (!hasMore || isLoadingMore) return
+    
+    setIsLoadingMore(true)
     const container = messagesContainerRef.current
-    if (!container) return
-    const prevScrollHeight = container.scrollHeight
-
-    const newOffset = Math.max(0, offset - PAGE_SIZE)
-    if (newOffset === offset) return
-
-    const data = await getMessages(chatId, newOffset)
-    if (data.results.length > 0) {
-      setMessages(prev => [...data.results, ...prev])
-      setOffset(newOffset)
-      setHasMore(newOffset > 0)
-
-      setTimeout(() => {
-        if (!container) return
-        const newScrollHeight = container.scrollHeight
-        container.scrollTop += newScrollHeight - prevScrollHeight
-      }, 0)
-    } else {
-      setHasMore(false)
+    if (!container) {
+      setIsLoadingMore(false)
+      return
     }
-  }, [chatId, offset, hasMore])
+    
+    // Store scroll height before loading
+    const previousScrollHeight = container.scrollHeight
+    const newOffset = Math.max(0, offset - PAGE_SIZE)
+    
+    if (newOffset === offset) {
+      setIsLoadingMore(false)
+      return
+    }
 
+    try {
+      // Wait a bit before loading to show spinner
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      const data = await getMessages(chatId, newOffset)
+      if (data.results.length > 0) {
+        setShouldScrollToBottom(false)
+        setMessages(prev => [...data.results, ...prev])
+        setOffset(newOffset)
+        setHasMore(newOffset > 0)
+
+        // After state update, adjust scroll to maintain position
+        requestAnimationFrame(() => {
+          const newScrollHeight = container.scrollHeight
+          const heightAdded = newScrollHeight - previousScrollHeight
+          container.scrollTop = container.scrollTop + heightAdded
+        })
+      } else {
+        setHasMore(false)
+      }
+    } catch (error) {
+      console.error("Failed to load more messages:", error)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [chatId, offset, hasMore, isLoadingMore])
+
+  // Removed auto-scroll loading - now using "Load more" button instead
+
+  // Auto-load when scrolling to top
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container) return
 
     const handleScroll = () => {
-      if (container.scrollTop < 50 && hasMore) {
+      // Load when user scrolls near the top
+      if (container.scrollTop < 50 && hasMore && !isLoadingMore) {
         loadMoreMessages()
       }
     }
 
     container.addEventListener("scroll", handleScroll)
     return () => container.removeEventListener("scroll", handleScroll)
-  }, [loadMoreMessages, hasMore])
+  }, [loadMoreMessages, hasMore, isLoadingMore])
 
   // Store partnerId in component state so we can update it when detected
   const [detectedPartnerId, setDetectedPartnerId] = useState<number | undefined>(undefined);
@@ -220,6 +247,7 @@ export function Chat({
         }
 
         setMessages(prev => [...prev, newMessage])
+        setShouldScrollToBottom(true) // Scroll to bottom when receiving new message
 
         // If message is from partner, mark as read (with a small delay to match Instagram)
         if (data.sender_id && data.sender_id !== currentUserId) {
@@ -237,41 +265,43 @@ export function Chat({
     }
   }, [chatId, currentUserId, sendMarkRead])
 
-  // Effect to mark messages as read when chat ID changes (switching between conversations)
-  useEffect(() => {
-    if (chatId && isConnected) {
-      console.log("📱 Chat ID changed, marking messages as read:", chatId);
-      sendMarkRead();
-    }
-  }, [chatId, isConnected, sendMarkRead])
-
   const handleSendMessage = () => {
     const trimmed = newMessage.trim()
     if (!trimmed || !isConnected || !socketRef.current) return
+    
     socketRef.current.send(JSON.stringify({ text: trimmed }))
+    
+    // Update conversation store immediately when message is sent
+    const { updateConversation } = useConversationStore.getState()
+    updateConversation({
+      chat_id: chatId,
+      message: trimmed,
+      timestamp: new Date().toISOString(),
+      sender: {
+        username: username,
+        avatar: avatar,
+        id: currentUserId
+      },
+      is_sender: true,
+      unread_count: 0
+    })
+    
     setNewMessage("")
+    setShouldScrollToBottom(true) // Scroll to bottom when sending message
   }
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    if (shouldScrollToBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [messages, shouldScrollToBottom])
 
   // Add Instagram-like behavior: mark messages as read when window gets focus
   useEffect(() => {
-    // When tab/window gets focus, mark messages as read
-    const handleFocus = async () => {
-      console.log("💡 Window focused, marking messages as read");
-      sendMarkRead();
-      
-      // Also persist read status to server via API
-      if (chatId) {
-        try {
-          await markConversationAsRead(chatId);
-          console.log("📃 Window focus: marked as read via API for chat:", chatId);
-        } catch (error) {
-          console.error("Failed to mark conversation as read on window focus:", error);
-        }
-      }
+    // When tab/window gets focus, send mark_read signal (WebSocket only, no API)
+    const handleFocus = () => {
+      console.log("💡 Window focused, sending mark_read signal");
+      sendMarkRead(); // WebSocket only
     };
 
     window.addEventListener('focus', handleFocus);
@@ -279,82 +309,74 @@ export function Chat({
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [sendMarkRead, chatId]);
-
-  // Effect to mark messages as read when window regains focus
-  useEffect(() => {
-    // Only add this if we have a valid chat
-    if (!chatId) return;
-
-    const handleFocus = () => {
-      console.log("🔍 Window focused - ensuring chat is marked as read");
-      ensureMarkedAsRead();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    
-    // Clean up
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [chatId, ensureMarkedAsRead]);
-
-  // This effect runs once on component mount and after page reload
-  useEffect(() => {
-    if (!chatId) return;
-    
-    // Wait for the component to fully mount
-    const timeoutId = setTimeout(() => {
-      console.log(`🔄 Chat component mounted/reloaded - ensuring chat ${chatId} is marked as read`);
-      ensureMarkedAsRead();
-    }, 1000); // Small delay to ensure everything is loaded
-    
-    return () => clearTimeout(timeoutId);
-  }, [chatId, ensureMarkedAsRead]); // Run when chat ID changes or when the component mounts
+  }, [sendMarkRead]);
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="p-4 border-b flex items-center justify-between">
-        <div className="flex items-center">
-          <Avatar className="w-10 h-10">
+    <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900">
+      {/* Header */}
+      <div className="px-4 py-3 border-b flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Back button for mobile */}
+          {onBack && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="lg:hidden -ml-2 flex-shrink-0 h-10 w-10"
+              onClick={onBack}
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </Button>
+          )}
+          <Avatar className="w-10 h-10 flex-shrink-0">
             <AvatarImage src={avatar || "/placeholder.svg"} alt={username} />
             <AvatarFallback>{username.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="ml-3">
-            <div className="font-medium">{username}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm truncate">{fullName || username}</div>
             <div className="text-xs text-muted-foreground">
-              {isConnected ? "Connected" : online ? "Active now" : "Offline"}
+              {isConnected ? "Active now" : online ? "Active now" : "Offline"}
             </div>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="ghost" size="icon"><Phone className="w-5 h-5" /></Button>
-          <Button variant="ghost" size="icon"><Video className="w-5 h-5" /></Button>
-          <Button variant="ghost" size="icon"><Info className="w-5 h-5" /></Button>
+        <div className="flex space-x-1 flex-shrink-0">
+          <Button variant="ghost" size="icon" className="h-10 w-10"><Phone className="w-5 h-5" /></Button>
+          <Button variant="ghost" size="icon" className="h-10 w-10"><Video className="w-5 h-5" /></Button>
+          <Button variant="ghost" size="icon" className="hidden lg:flex h-10 w-10"><Info className="w-5 h-5" /></Button>
         </div>
       </div>
 
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 flex flex-col gap-4"
+        className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2"
         style={{ scrollbarGutter: "stable" }}
       >
+        {/* Loading indicator at top */}
+        {isLoadingMore && (
+          <div className="flex justify-center py-3">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="w-5 h-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+            </div>
+          </div>
+        )}
+
         {messages.map((msg, index) => (
-          <div key={`${msg.id}-${msg.time}-${index}`} className={`flex ${msg.isOwn ? "justify-end" : "justify-start"}`}>
+          <div key={`${msg.id}-${msg.time}-${index}`} className={`flex ${msg.isOwn ? "justify-end" : "justify-start"} items-end gap-2`}>
             {!msg.isOwn && (
-              <Avatar className="w-8 h-8 mr-2 mt-1">
+              <Avatar className="w-7 h-7 flex-shrink-0">
                 <AvatarImage src={avatar || "/placeholder-user.jpg"} alt={username} />
                 <AvatarFallback>{username.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             )}
-            <div>
+            <div className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
               <div
-                className={`max-w-xs px-4 py-2 rounded-2xl ${msg.isOwn ? "bg-blue-500 text-white rounded-br-none" : "bg-muted rounded-bl-none"
-                  }`}
+                className={`px-4 py-2.5 rounded-3xl break-words ${
+                  msg.isOwn 
+                    ? "bg-blue-500 text-white" 
+                    : "bg-zinc-100 dark:bg-zinc-800 text-foreground"
+                }`}
               >
                 {msg.text}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">{msg.time}</div>
             </div>
           </div>
         ))}
@@ -464,7 +486,13 @@ export function Chat({
           // and it's the last message in the conversation (Instagram style)
           if (readByIds.includes(effectivePartnerId)) {
             return (
-              <div className="text-xs text-blue-500 text-right pr-4 mt-1">✓ Seen</div>
+              <div className="flex items-center justify-end gap-1 px-4 mt-1">
+                <Avatar className="w-3.5 h-3.5">
+                  <AvatarImage src={avatar || "/placeholder-user.jpg"} alt={username} />
+                  <AvatarFallback className="text-[8px]">{username.slice(0, 1).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-muted-foreground">Seen</span>
+              </div>
             );
           } else {
             console.log("❌ Last message not read by partner yet");
@@ -473,14 +501,26 @@ export function Chat({
         })()}
       </div>
 
-      <div className="p-4 border-t flex items-center">
-        <Button variant="ghost" size="icon"><Smile className="w-5 h-5" /></Button>
-        <Button variant="ghost" size="icon"><ImageIcon className="w-5 h-5" /></Button>
+      <div className="px-4 py-3 border-t flex items-center gap-2 flex-shrink-0">
+        <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9">
+          <Smile className="w-5 h-5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9">
+          <ImageIcon className="w-5 h-5" />
+        </Button>
         <Input
-          className="mx-3"
+          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
           placeholder="Message..."
           value={newMessage}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
+          onFocus={() => {
+            console.log("💬 Input focused, marking messages as read");
+            sendMarkRead();
+            
+            // Also mark as read in conversation store for instant UI update
+            const { markAsRead } = useConversationStore.getState();
+            markAsRead(chatId);
+          }}
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault()
@@ -493,8 +533,9 @@ export function Chat({
           disabled={!newMessage.trim() || !isConnected}
           variant="ghost"
           size="icon"
+          className="flex-shrink-0 h-9 w-9"
         >
-          {newMessage.trim() ? <Send className="w-5 h-5" /> : <Heart className="w-5 h-5" />}
+          {newMessage.trim() ? <Send className="w-5 h-5 text-blue-500" /> : <Heart className="w-5 h-5" />}
         </Button>
       </div>
     </div>

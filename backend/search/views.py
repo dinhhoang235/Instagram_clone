@@ -133,13 +133,37 @@ class SearchUserAPIView(APIView):
 
     def get(self, request):
         query = request.GET.get("q", "").strip()
-        if not query:
-            return Response([])
+        mutual_only = request.GET.get("mutual", "false").lower() == "true"
+        
+        # Base query - exclude current user
+        profiles = Profile.objects.exclude(user=request.user).select_related("user")
+        
+        # Filter for mutual followers if requested
+        if mutual_only:
+            from users.models import Follow
+            # Users that current user follows
+            following_ids = list(Follow.objects.filter(
+                follower=request.user
+            ).values_list('following_id', flat=True))
+            
+            # Users that follow current user
+            follower_ids = list(Follow.objects.filter(
+                following=request.user
+            ).values_list('follower_id', flat=True))
+            
+            # Mutual followers (intersection of both sets)
+            mutual_ids = set(following_ids) & set(follower_ids)
+            
+            # Filter profiles to only mutual followers
+            profiles = profiles.filter(user_id__in=mutual_ids)
+        
+        # Apply search query if provided
+        if query:
+            profiles = profiles.filter(
+                Q(user__username__icontains=query) |
+                Q(full_name__icontains=query)
+            )
 
-        profiles = Profile.objects.filter(
-            Q(user__username__icontains=query) |
-            Q(full_name__icontains=query)
-        ).exclude(user=request.user).select_related("user")[:10]
-
+        profiles = profiles[:20]
         serializer = MinimalUserSerializer(profiles, many=True, context={"request": request})
         return Response(serializer.data)

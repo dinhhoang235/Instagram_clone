@@ -78,7 +78,7 @@ export function Feed() {
   if (!user) return null
 
   return (
-    <div className="flex gap-8">
+    <div className="flex gap-16">
       {/* Main Feed */}
       <div className="flex-1 space-y-6">
         {loading ? (

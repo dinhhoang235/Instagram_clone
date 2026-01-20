@@ -11,6 +11,7 @@ export interface MessageType {
 export interface ChatProps {
   chatId: number
   username: string
+  fullName?: string
   avatar: string
   online: boolean
   currentUserId: number
@@ -20,6 +21,7 @@ export interface ChatProps {
 export interface MessageListType {
     id: number
     username: string
+    fullName?: string
     avatar: string | null 
     lastMessage: string
     time: string

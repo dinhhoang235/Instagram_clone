@@ -8,7 +8,7 @@ from .serializers import ConversationSerializer, MessageSerializer, MinimalUserS
 from .pagination import MessagePagination
 from django.contrib.auth.models import User
 from users.models import Profile
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
@@ -16,8 +16,39 @@ class ConversationListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        threads = Thread.objects.filter(users=request.user).order_by('-updated')
-        serializer = ConversationSerializer(threads, many=True, context={'request': request})
+        # Get all threads for the user
+        threads = Thread.objects.filter(users=request.user)
+        
+        # Sort by most recent message timestamp only
+        # Unread status is just for UI badge, not for sorting
+        # This prevents the list from jumping when user marks as read
+        
+        threads_list = []
+        for thread in threads:
+            # Get the last message in the thread
+            last_message = thread.last_message()
+            
+            # Check if current user has unread messages in this thread
+            unread_count = Message.objects.filter(
+                thread=thread
+            ).exclude(sender=request.user).exclude(read_by=request.user).count()
+            
+            threads_list.append({
+                'thread': thread,
+                'last_message_timestamp': last_message.timestamp if last_message else thread.updated,
+                'unread_count': unread_count
+            })
+        
+        # Sort ONLY by most recent message timestamp (descending)
+        # Don't sort by unread_count - that causes the list to jump when marking as read
+        threads_list.sort(
+            key=lambda x: -x['last_message_timestamp'].timestamp()
+        )
+        
+        # Extract just the threads
+        sorted_threads = [item['thread'] for item in threads_list]
+        
+        serializer = ConversationSerializer(sorted_threads, many=True, context={'request': request})
         return Response(serializer.data)
     
     def post(self, request):
@@ -90,10 +121,8 @@ class MarkThreadAsReadView(APIView):
                 message.read_by.add(request.user)
                 print(f"✓ Marked message {message.id} as read by user {request.user.id}")
             
-            # Always update the thread's timestamp for consistency
-            # This helps with sorting in the UI after marking as read
-            thread.save(update_fields=['updated'])
-            print(f"🔄 Updated thread {thread_id} timestamp")
+            # Don't update thread.updated timestamp when marking as read
+            # Updating it causes the thread to be re-sorted, which causes the UI to jump
             
             return Response(
                 {

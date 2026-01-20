@@ -36,5 +36,6 @@ export interface SearchResponse {
 export interface MinimalUser {
   id: number
   username: string
+  full_name?: string
   avatar: string
 }
