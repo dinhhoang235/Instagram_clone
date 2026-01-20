@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from .models import Comment
 from .serializers import CommentSerializer, ReplySerializer
+from .pagination import CommentPagination
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.filter(parent__isnull=True)
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = CommentPagination
 
     def get_queryset(self):
         if self.action == "list":

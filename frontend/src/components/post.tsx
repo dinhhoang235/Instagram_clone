@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeCheck } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
@@ -21,23 +20,46 @@ interface PostProps {
 export function Post({ post }: PostProps) {
   const [isLiked, setIsLiked] = useState(post.is_liked)
   const [isSaved, setIsSaved] = useState(false)
-  const [comment, setComment] = useState("")
   const [likes, setLikes] = useState(post.likes)
+  const [comments, setComments] = useState(post.comments)
   const [isAnimating, setIsAnimating] = useState(false)
-  const commentInputRef = useRef<HTMLInputElement>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
   const router = useRouter()
+  
+  const MAX_CAPTION_LENGTH = 25
+  const shouldTruncate = post.caption && post.caption.length > MAX_CAPTION_LENGTH
+
+  // Update comments count when post prop changes
+  useEffect(() => {
+    setComments(post.comments)
+  }, [post.comments])
+
+  // Listen for new comments from modal
+  useEffect(() => {
+    const handleNewComment = (event: CustomEvent) => {
+      if (event.detail.postId === post.id) {
+        setComments((prev) => prev + 1)
+      }
+    }
+
+    window.addEventListener("newComment", handleNewComment as EventListener)
+    return () => {
+      window.removeEventListener("newComment", handleNewComment as EventListener)
+    }
+  }, [post.id])
+
+  const formatCount = (count: number): string => {
+    if (count >= 1000000) {
+      return (count / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+    }
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+    }
+    return count.toString()
+  }
 
   const handleCommentClick = () => {
     // Navigate to post detail page for better comment experience
-    router.push(`/post/${post.id}`)
-  }
-
-  const handleCommentInputFocus = () => {
-    // Navigate to post detail page when trying to comment
-    router.push(`/post/${post.id}`)
-  }
-
-  const handleImageClick = () => {
     router.push(`/post/${post.id}`)
   }
 
@@ -62,6 +84,9 @@ export function Post({ post }: PostProps) {
   }
 
   const handleDoubleClick = () => {
+    setIsAnimating(true)
+    setTimeout(() => setIsAnimating(false), 600)
+    
     if (!isLiked) {
       handleLike()
     }
@@ -102,7 +127,6 @@ export function Post({ post }: PostProps) {
             <DropdownMenuItem>Report</DropdownMenuItem>
             <DropdownMenuItem>Unfollow</DropdownMenuItem>
             <DropdownMenuItem>Add to favorites</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleImageClick}>Go to post</DropdownMenuItem>
             <DropdownMenuItem>Share to...</DropdownMenuItem>
             <DropdownMenuItem>Copy link</DropdownMenuItem>
             <DropdownMenuItem>Embed</DropdownMenuItem>
@@ -112,8 +136,7 @@ export function Post({ post }: PostProps) {
 
       {/* Post Image */}
       <div
-        className="relative aspect-square cursor-pointer select-none"
-        onClick={handleImageClick}
+        className="relative aspect-square select-none"
         onDoubleClick={handleDoubleClick}
       >
         <Image src={post.image || "/placeholder.svg"} alt="Post image" fill className="object-cover" />
@@ -121,12 +144,7 @@ export function Post({ post }: PostProps) {
         {/* Double-tap heart animation */}
         {isAnimating && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <Heart
-              className={`w-20 h-20 text-white fill-red-500 animate-ping ${isAnimating ? "opacity-100" : "opacity-0"}`}
-              style={{
-                animation: "heartPop 0.3s ease-out",
-              }}
-            />
+            <Heart className="w-24 h-24 text-red-500 fill-red-500 animate-[heartPop_0.6s_ease-out]" />
           </div>
         )}
       </div>
@@ -139,23 +157,25 @@ export function Post({ post }: PostProps) {
               variant="ghost"
               size="sm"
               onClick={handleLike}
-              className={`p-0 h-auto transition-transform duration-150 ${isAnimating ? "scale-125" : "scale-100"} hover:scale-110`}
+              className={`p-0 h-auto transition-transform duration-150 ${isAnimating ? "scale-125" : "scale-100"} hover:scale-110 flex items-center gap-2`}
             >
               <Heart
-                className={`w-6 h-6 transition-all duration-200 ${isLiked ? "fill-red-500 text-red-500 scale-110" : "hover:text-gray-600 dark:hover:text-gray-300"
+                className={`w-7 h-7 transition-all duration-200 ${isLiked ? "fill-red-500 text-red-500 scale-110" : "hover:text-gray-600 dark:hover:text-gray-300"
                   }`}
               />
+              <span className="font-semibold text-sm">{formatCount(likes)}</span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="p-0 h-auto hover:scale-110 transition-transform"
+              className="p-0 h-auto hover:scale-110 transition-transform flex items-center gap-2"
               onClick={handleCommentClick}
             >
-              <MessageCircle className="w-6 h-6 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+              <MessageCircle className="w-7 h-7 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+              <span className="font-semibold text-sm">{formatCount(comments)}</span>
             </Button>
             <Button variant="ghost" size="sm" className="p-0 h-auto hover:scale-110 transition-transform">
-              <Send className="w-6 h-6 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+              <Send className="w-7 h-7 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
             </Button>
           </div>
           <Button
@@ -165,70 +185,47 @@ export function Post({ post }: PostProps) {
             className="p-0 h-auto hover:scale-110 transition-transform"
           >
             <Bookmark
-              className={`w-6 h-6 transition-all duration-200 ${isSaved ? "fill-current" : "hover:text-gray-600 dark:hover:text-gray-300"
+              className={`w-7 h-7 transition-all duration-200 ${isSaved ? "fill-current" : "hover:text-gray-600 dark:hover:text-gray-300"
                 }`}
             />
           </Button>
         </div>
-
-        {/* Likes */}
-        <div className="font-semibold text-sm mb-2">{likes === 1 ? "1 like" : `${likes.toLocaleString()} likes`}</div>
 
         {/* Caption + Hashtags gộp */}
         <div className="text-sm mb-2">
           <Link href={`/${post.user.username}`} className="font-semibold mr-2">
             {post.user.username}
           </Link>
-          {renderCaptionWithTags(post.caption)}
+          <span className="whitespace-pre-wrap break-words">
+            {isExpanded || !shouldTruncate
+              ? renderCaptionWithTags(post.caption)
+              : <>
+                  {renderCaptionWithTags(post.caption.slice(0, MAX_CAPTION_LENGTH))}
+                  <span>... </span>
+                  <button 
+                    onClick={() => setIsExpanded(true)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    more
+                  </button>
+                </>
+            }
+          </span>
         </div>
 
-
-
-        {/* Comments */}
-        <div className="text-sm text-muted-foreground mb-2">
-          <button onClick={handleCommentClick} className="hover:underline">
-            View all {post.comments} comments
-          </button>
-        </div>
-
-        {/* Time */}
-        <div className="text-xs text-muted-foreground mb-3">{post.timeAgo}</div>
-
-        {/* Add Comment */}
-        <div className="flex items-center space-x-2 pt-2 border-t" onClick={handleCommentInputFocus}>
-          <Input
-            ref={commentInputRef}
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="border-0 p-0 focus-visible:ring-0 text-sm cursor-pointer"
-            onFocus={handleCommentInputFocus}
-            readOnly
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-blue-500 font-semibold p-0 h-auto hover:text-blue-600 transition-colors"
-            onClick={handleCommentInputFocus}
-          >
-            Post
-          </Button>
-        </div>
+      
       </CardContent>
 
       <style jsx>{`
         @keyframes heartPop {
-          0% {
+          0%,
+          100% {
             transform: scale(0);
-            opacity: 1;
+            opacity: 0;
           }
           50% {
             transform: scale(1.2);
             opacity: 0.8;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 0;
           }
         }
       `}</style>

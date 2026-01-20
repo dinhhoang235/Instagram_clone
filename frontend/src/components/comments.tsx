@@ -20,10 +20,11 @@ export function Comments({ postId }: CommentsProps) {
   const [comments, setComments] = useState<CommentType[]>([])
   const [replyingTo, setReplyingTo] = useState<number | null>(null)
   const [replyText, setReplyText] = useState("")
-  // const [likedComments, setLikedComments] = useState<Set<number>>(new Set())
-  // const [likedReplies, setLikedReplies] = useState<Set<number>>(new Set())
   const [showAllReplies, setShowAllReplies] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [isFetchingMore, setIsFetchingMore] = useState(false)
 
   const isDark = theme === "dark"
 
@@ -31,9 +32,10 @@ export function Comments({ postId }: CommentsProps) {
     const fetchComments = async () => {
       setIsLoading(true)
       try {
-        const data = await getCommentsByPostId(postId)
-        console.log(data)
-        setComments(data)
+        const data = await getCommentsByPostId(postId, 1)
+        setComments(data.results)
+        setHasMore(data.next !== null)
+        setPage(1)
       } catch (error) {
         console.error("Failed to fetch comments:", error)
       } finally {
@@ -43,6 +45,23 @@ export function Comments({ postId }: CommentsProps) {
 
     fetchComments()
   }, [postId])
+
+  const handleLoadMore = async () => {
+    if (isFetchingMore || !hasMore) return
+
+    setIsFetchingMore(true)
+    try {
+      const nextPage = page + 1
+      const data = await getCommentsByPostId(postId, nextPage)
+      setComments((prev) => [...prev, ...data.results])
+      setHasMore(data.next !== null)
+      setPage(nextPage)
+    } catch (error) {
+      console.error("Failed to fetch more comments:", error)
+    } finally {
+      setIsFetchingMore(false)
+    }
+  }
 
   useEffect(() => {
     const handleNewComment = (e: CustomEvent) => {
@@ -143,9 +162,9 @@ export function Comments({ postId }: CommentsProps) {
   }
 
   return (
-    <div className="h-full overflow-hidden">
+    <div className="h-full">
       {/* Comments List */}
-      <div className="space-y-4 h-full overflow-hidden">
+      <div className="space-y-4">
         {isLoading ? (
           <div className="flex justify-center items-center h-20">
             <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gray-500"></div>
@@ -374,6 +393,27 @@ export function Comments({ postId }: CommentsProps) {
               </div>
             </div>
           ))
+        )}
+        
+        {/* Load More Button */}
+        {hasMore && !isLoading && (
+          <div className="flex flex-col items-center justify-center py-4">
+            <Button
+              variant="ghost"
+              onClick={handleLoadMore}
+              disabled={isFetchingMore}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            >
+              {isFetchingMore ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500"></div>
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                "Load more comments"
+              )}
+            </Button>
+          </div>
         )}
       </div>
     </div>

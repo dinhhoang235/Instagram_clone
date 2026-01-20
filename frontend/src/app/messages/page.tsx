@@ -73,8 +73,8 @@ export default function MessagesPage() {
             <Sidebar />
 
             {/* Main Chat Area */}
-            <main className="flex-1 lg:ml-64 flex items-center justify-center p-4">
-                <div className="w-full h-[calc(100vh-2rem)] border rounded-lg flex overflow-hidden shadow-sm bg-white dark:bg-muted">
+            <main className="flex-1 lg:ml-64 flex items-center justify-center p-4 pt-16 pb-20 lg:pt-4 lg:pb-4">
+                <div className="w-full h-[calc(100vh-8rem)] lg:h-[calc(100vh-2rem)] border rounded-lg flex overflow-hidden shadow-sm bg-white dark:bg-muted">
                     {/* Left: List of conversations */}
                     <MessageList 
                         onSelectChat={saveActiveChat} 

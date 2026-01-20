@@ -61,7 +61,7 @@ export default function CreatePage() {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 lg:ml-64">
-          <div className="max-w-2xl mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
             <Card>
               <CardHeader>
                 <CardTitle>Create new post</CardTitle>

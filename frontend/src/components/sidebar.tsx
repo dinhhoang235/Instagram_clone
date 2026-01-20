@@ -84,6 +84,39 @@ export function Sidebar() {
 
   return (
     <>
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b">
+        <div className="flex items-center justify-between h-14 px-4">
+          {/* Instagram Logo */}
+          <Link href="/" className="flex items-center">
+            <span className="text-2xl font-bold" style={{ fontFamily: "'Pacifico', cursive, 'Brush Script MT', cursive" }}>
+              Instagram
+            </span>
+          </Link>
+          
+          {/* Right Icons */}
+          <div className="flex items-center gap-4">
+            {/* Create Post Button */}
+            <Link href="/create" className="relative">
+              <PlusSquare className="w-6 h-6" />
+            </Link>
+            
+            {/* Notifications with Badge */}
+            <Link href="/notifications" className="relative">
+              <Heart className={cn(
+                "w-6 h-6",
+                pathname === "/notifications" ? "fill-current" : ""
+              )} />
+              {unreadNotificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border-2 border-background">
+                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background">
       <div className="flex flex-col flex-1 min-h-0 pt-5 pb-4">

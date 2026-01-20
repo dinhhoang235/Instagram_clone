@@ -9,10 +9,9 @@ import { redirect } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X, BadgeCheck } from "lucide-react"
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ChevronLeft, BadgeCheck } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useTheme } from "next-themes"
 import { getPostById, likePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
 import { createComment } from "@/lib/services/comments"
@@ -22,7 +21,6 @@ export default function PostPage() {
   const { isAuthenticated } = useAuth()
   const params = useParams()
   const router = useRouter()
-  const { theme } = useTheme()
   const postId = params.id as string
   const [post, setPost] = useState<PostType | null>(null)
 
@@ -59,7 +57,7 @@ export default function PostPage() {
         <div className="flex">
           <Sidebar />
           <main className="flex-1 lg:ml-64">
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
               <div className="text-center">
                 <h1 className="text-2xl font-bold mb-4">Post not found</h1>
                 <p className="text-muted-foreground">The post youre looking for doesnt exist.</p>
@@ -123,182 +121,35 @@ export default function PostPage() {
     }
   }
 
-  const isDark = theme === "dark"
-
   return (
-    <div className={`fixed inset-0 z-50 ${isDark ? "bg-black" : "bg-white"} overflow-hidden`}>
-      {/* Close button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className={`absolute top-4 right-4 z-50 ${isDark ? "text-white hover:bg-white/10" : "text-black hover:bg-black/10"}`}
-        onClick={() => router.back()}
-      >
-        <X className="w-6 h-6" />
-      </Button>
-
-      <div className="flex w-full h-full overflow-hidden">
-        {/* Post Image */}
-        <div
-          className={`flex-1 flex items-center justify-center ${isDark ? "bg-black" : "bg-gray-50"} overflow-hidden relative select-none`}
-          onDoubleClick={handleDoubleClick}
-        >
-          <div className="relative max-w-full max-h-full">
-            <Image
-              src={post.image || "/placeholder.svg"}
-              alt="Post image"
-              width={800}
-              height={800}
-              layout="responsive"
-              className="object-contain max-h-[100vh] max-w-[calc(100vw-400px)]"
-              priority
-            />
-
-            {/* Double-tap heart animation */}
-            {isAnimating && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <Heart
-                  className="w-24 h-24 text-white fill-red-500"
-                  style={{
-                    animation: "heartPop 0.6s ease-out",
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Post Details Sidebar */}
-        <div
-          className={`w-[400px] ${isDark ? "bg-black border-gray-800" : "bg-white border-gray-200"} border-l flex flex-col h-full overflow-hidden`}
-        >
-          {/* Post Header */}
-          <div
-            className={`flex items-center justify-between p-4 ${isDark ? "border-gray-800" : "border-gray-200"} border-b flex-shrink-0`}
-          >
-            <div className="flex items-center space-x-3">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={post.user.avatar || "/placeholder.svg"} alt={post.user.username} />
-                <AvatarFallback>{post.user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex items-center space-x-1">
-                <Link
-                  href={`/${post.user.username}`}
-                  className={`font-semibold text-sm hover:underline ${isDark ? "text-white" : "text-black"}`}
-                >
-                  {post.user.username}
-                </Link>
-                {post.user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-current" />}
-              </div>
-            </div>
+    <div className="min-h-screen bg-background">
+      <div className="flex">
+        <Sidebar />
+        
+        {/* Mobile View - Comments Only */}
+        <div className="lg:hidden flex flex-col h-screen w-full fixed inset-0 z-50 bg-white dark:bg-black">
+          {/* Mobile Header */}
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
             <Button
               variant="ghost"
-              size="sm"
-              className={`${isDark ? "text-white hover:bg-white/10" : "text-black hover:bg-black/10"}`}
+              size="icon"
+              className="p-0 h-auto hover:bg-transparent"
+              onClick={() => router.back()}
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <ChevronLeft className="w-6 h-6" />
             </Button>
+            <h1 className="text-base font-semibold">Comments</h1>
+            <div className="w-6"></div>
           </div>
 
-          {/* Post Caption */}
-          <div className={`p-4 ${isDark ? "border-gray-800" : "border-gray-200"} border-b flex-shrink-0`}>
-            <div className="flex items-start space-x-3">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={post.user.avatar || "/placeholder.svg"} alt={post.user.username} />
-                <AvatarFallback>{post.user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="text-sm">
-                  <Link
-                    href={`/${post.user.username}`}
-                    className={`font-semibold mr-2 ${isDark ? "text-white" : "text-black"}`}
-                  >
-                    {post.user.username}
-                  </Link>
-                  <span className={isDark ? "text-white" : "text-black"}>
-                    {renderCaptionWithTags(post.caption)}
-                  </span>
-                </div>
-                <p className={`text-xs mt-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{post.timeAgo}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Comments Section */}
-          <div className="flex-1 p-4 overflow-hidden">
+          {/* Comments Section - Mobile */}
+          <div className="flex-1 p-4 overflow-y-auto">
             <Comments postId={postId} />
           </div>
 
-          {/* Post Actions */}
-          <div className={`${isDark ? "border-gray-800" : "border-gray-200"} border-t p-4 flex-shrink-0`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLike}
-                  className={`p-0 h-auto hover:bg-transparent transition-transform duration-150 ${isAnimating ? "scale-125" : "scale-100"} hover:scale-110`}
-                >
-                  <Heart
-                    className={`w-6 h-6 transition-all duration-200 ${isLiked
-                      ? "fill-red-500 text-red-500 scale-110"
-                      : isDark
-                        ? "text-white hover:text-gray-300"
-                        : "text-black hover:text-gray-600"
-                      }`}
-                  />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-0 h-auto hover:bg-transparent hover:scale-110 transition-transform"
-                  onClick={() => commentInputRef.current?.focus()}
-                >
-                  <MessageCircle
-                    className={`w-6 h-6 transition-colors ${isDark ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"}`}
-                  />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-0 h-auto hover:bg-transparent hover:scale-110 transition-transform"
-                >
-                  <Send
-                    className={`w-6 h-6 transition-colors ${isDark ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"}`}
-                  />
-                </Button>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsSaved(!isSaved)}
-                className="p-0 h-auto hover:bg-transparent hover:scale-110 transition-transform"
-              >
-                <Bookmark
-                  className={`w-6 h-6 transition-all duration-200 ${isSaved
-                    ? isDark
-                      ? "fill-white text-white"
-                      : "fill-black text-black"
-                    : isDark
-                      ? "text-white hover:text-gray-300"
-                      : "text-black hover:text-gray-600"
-                    }`}
-                />
-              </Button>
-            </div>
-
-            <div className={`font-semibold text-sm mb-2 ${isDark ? "text-white" : "text-black"}`}>
-              {likes === 1 ? "1 like" : `${likes.toLocaleString()} likes`}
-            </div>
-
-            {/* Add Comment Input */}
-            <div
-              className={`flex items-center space-x-2 pt-2 ${isDark ? "border-gray-800" : "border-gray-200"} border-t`}
-            >
-              <Avatar className="w-6 h-6">
-                <AvatarImage src="/placeholder-user.jpg" alt="You" />
-                <AvatarFallback>YU</AvatarFallback>
-              </Avatar>
+          {/* Add Comment Input - Mobile */}
+          <div className="border-t p-4 flex-shrink-0">
+            <div className="flex items-center space-x-2">
               <Input
                 ref={commentInputRef}
                 placeholder="Add a comment..."
@@ -310,14 +161,13 @@ export default function PostPage() {
                     handleAddComment()
                   }
                 }}
-                className={`border-0 bg-transparent p-0 focus-visible:ring-0 text-sm ${isDark ? "text-white placeholder:text-gray-400" : "text-black placeholder:text-gray-500"
-                  }`}
+                className="flex-1"
               />
               {comment && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-blue-500 font-semibold p-0 h-auto hover:bg-transparent hover:text-blue-600 transition-colors"
+                  className="text-blue-500 font-semibold p-0 h-auto hover:bg-transparent"
                   onClick={handleAddComment}
                 >
                   Post
@@ -326,6 +176,154 @@ export default function PostPage() {
             </div>
           </div>
         </div>
+
+        {/* Desktop View - Full Layout */}
+        <main className="hidden lg:flex flex-1 justify-center pt-8 pb-8 ml-64">
+          <div className="flex max-w-[935px] w-full h-fit border border-gray-200 dark:border-gray-800 rounded-sm overflow-hidden">
+            {/* Post Image */}
+            <div
+              className="flex-[1.5] flex items-center justify-center bg-black overflow-hidden"
+              onDoubleClick={handleDoubleClick}
+            >
+              <div className="relative w-full aspect-square flex items-center justify-center">
+                <Image
+                  src={post.image || "/placeholder.svg"}
+                  alt="Post image"
+                  width={600}
+                  height={600}
+                  className="object-contain w-full h-full"
+                  priority
+                />
+
+                {/* Double-tap heart animation */}
+                {isAnimating && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Heart
+                      className="w-24 h-24 text-white fill-white"
+                      style={{
+                        animation: "heartPop 0.6s ease-out",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Post Details Sidebar */}
+            <div className="w-[335px] bg-white dark:bg-black border-l flex flex-col overflow-hidden max-h-[600px]">
+              {/* Post Header */}
+              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                <div className="flex items-center space-x-3 flex-1">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={post.user.avatar || "/placeholder.svg"} alt={post.user.username} />
+                    <AvatarFallback>{post.user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex items-center space-x-1">
+                    <Link href={`/${post.user.username}`} className="font-semibold text-sm hover:underline">
+                      {post.user.username}
+                    </Link>
+                    {post.user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-current" />}
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Comments Section */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="p-4">
+                  {/* Post Caption */}
+                  <div className="flex items-start space-x-3 pb-4 mb-4">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarImage src={post.user.avatar || "/placeholder.svg"} alt={post.user.username} />
+                      <AvatarFallback>{post.user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="text-sm">
+                      <Link href={`/${post.user.username}`} className="font-semibold mr-2">
+                        {post.user.username}
+                      </Link>
+                      <span className="whitespace-pre-wrap break-words">{renderCaptionWithTags(post.caption)}</span>
+                      </div>
+                      <p className="text-xs mt-2 text-muted-foreground">{post.timeAgo}</p>
+                    </div>
+                  </div>
+
+                  <Comments postId={postId} />
+                </div>
+              </div>
+
+              {/* Post Actions */}
+              <div className="border-t p-4 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLike}
+                      className="p-0 h-auto hover:bg-transparent"
+                    >
+                      <Heart
+                        className={`w-6 h-6 transition-all ${isLiked ? "fill-red-500 text-red-500" : ""}`}
+                      />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-0 h-auto hover:bg-transparent"
+                      onClick={() => commentInputRef.current?.focus()}
+                    >
+                      <MessageCircle className="w-6 h-6" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
+                      <Send className="w-6 h-6" />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsSaved(!isSaved)}
+                    className="p-0 h-auto hover:bg-transparent"
+                  >
+                    <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current" : ""}`} />
+                  </Button>
+                </div>
+
+                <div className="font-semibold text-sm mb-2">
+                  {likes === 1 ? "1 like" : `${likes.toLocaleString()} likes`}
+                </div>
+
+                {/* Add Comment Input */}
+                <div className="flex items-center space-x-2 pt-2 border-t">
+                  <Input
+                    ref={commentInputRef}
+                    placeholder="Add a comment..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        handleAddComment()
+                      }
+                    }}
+                    className="flex-1 border-0 bg-transparent p-0 focus-visible:ring-0 text-sm"
+                  />
+                  {comment && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-500 font-semibold p-0 h-auto hover:bg-transparent"
+                      onClick={handleAddComment}
+                    >
+                      Post
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
 
       <style jsx>{`

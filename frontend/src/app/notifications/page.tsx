@@ -59,7 +59,7 @@ export default function NotificationsPage() {
             <div className="flex">
                 <Sidebar />
                 <main className="flex-1 lg:ml-64">
-                    <div className="max-w-2xl mx-auto px-4 py-8">
+                    <div className="max-w-2xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center space-x-4">
                                 <h1 className="text-2xl font-bold">Notifications</h1>

@@ -1,10 +1,17 @@
 import api from "@/lib/api";
 import { CommentType, ReplyType } from "@/types/comment";
 
-// Lấy tất cả comment của một bài post
-export const getCommentsByPostId = async (postId: string): Promise<CommentType[]> => {
-    const res = await api.get< {results: CommentType[] }>(`/comments/?post_id=${postId}`);
-    return res.data.results;
+interface CommentsResponse {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: CommentType[];
+}
+
+// Lấy tất cả comment của một bài post với pagination
+export const getCommentsByPostId = async (postId: string, page: number = 1): Promise<CommentsResponse> => {
+    const res = await api.get<CommentsResponse>(`/comments/?post_id=${postId}&page=${page}`);
+    return res.data;
 };
 
 // Tạo comment mới cho một bài post

@@ -40,7 +40,7 @@ export default function ProfilePage() {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 lg:ml-64">
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
             {/* Profile Header */}
             <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-8 mb-8">
               <Avatar className="w-32 h-32 md:w-40 md:h-40">
