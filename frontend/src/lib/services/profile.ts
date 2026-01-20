@@ -27,6 +27,12 @@ export async function toggleFollowUser(username: string): Promise<{ detail: stri
   return res.data
 }
 
+// Remove a follower
+export async function removeFollower(username: string): Promise<{ detail: string }> {
+  const res = await api.post<{ detail: string }>(`/profiles/${username}/remove_follower/`)
+  return res.data
+}
+
 // get list of followers 
 export async function getFollowers(username: string): Promise<ProfileType[]> {
   const res = await api.get<ProfileType[]>(`/profiles/${username}/followers/`)

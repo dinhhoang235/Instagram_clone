@@ -121,6 +121,15 @@ class ProfileViewSet(viewsets.ModelViewSet):
             Follow.objects.create(follower=request.user, following=target_user)
             return Response({"detail": "Followed", "is_following": True})
 
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    def remove_follower(self, request, pk=None):
+        follower_user = get_object_or_404(User, username=pk)
+        target_user = request.user  # The current user
+
+        # Remove the follower
+        Follow.objects.filter(follower=follower_user, following=target_user).delete()
+        return Response({"detail": "Follower removed"})
+
     @action(detail=True, methods=["get"])
     def followers(self, request, pk=None):
         user = get_object_or_404(User, username=pk)

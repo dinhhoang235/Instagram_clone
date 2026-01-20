@@ -28,9 +28,10 @@ import {
 import { useConversationStore } from "@/stores/useConversationStore"
 import { useNotificationStore } from "@/stores/useNotificationStore"
 import { useWebSocket } from "@/components/message-provider"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { getMyProfile } from "@/lib/services/profile"
 
-const navigation = [
+const getNavigation = (username: string) => [
   { name: "Home", href: "/", icon: Home },
   { name: "Search", href: "/search", icon: Search },
   { name: "Explore", href: "/explore", icon: Compass },
@@ -38,7 +39,14 @@ const navigation = [
   { name: "Messages", href: "/messages", icon: MessageCircle },
   { name: "Notifications", href: "/notifications", icon: Heart },
   { name: "Create", href: "/create", icon: PlusSquare },
-  { name: "Profile", href: "/profile", icon: User },
+  { name: "Profile", href: `/${username}`, icon: User },
+]
+
+const mobileNavigation = [
+  { name: "Home", href: "/", icon: Home },
+  { name: "Search", href: "/search", icon: Search },
+  { name: "Messages", href: "/messages", icon: MessageCircle },
+  { name: "Reels", href: "/reels", icon: Film },
 ]
 
 export function Sidebar() {
@@ -46,6 +54,21 @@ export function Sidebar() {
   const router = useRouter()
   const { isAuthenticated, logout } = useAuth()
   const { isConnected, isConnecting } = useWebSocket()
+  const [navigation, setNavigation] = useState(getNavigation(""))
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const fetchUsername = async () => {
+        try {
+          const profile = await getMyProfile()
+          setNavigation(getNavigation(profile.username))
+        } catch (error) {
+          console.error("Failed to fetch profile:", error)
+        }
+      }
+      fetchUsername()
+    }
+  }, [isAuthenticated])
 
   const handleLogout = () => {
     logout()
@@ -213,7 +236,7 @@ export function Sidebar() {
       {/* Mobile Bottom Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
         <nav className="flex justify-around items-center h-16 px-2">
-          {navigation.slice(0, 5).map((item) => {
+          {mobileNavigation.map((item) => {
             const isActive = pathname === item.href
             const showDot =
               (item.name === "Messages" && totalUnreadMessages > 0) ||
@@ -258,7 +281,7 @@ export function Sidebar() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 mb-2">
-              {navigation.slice(5).map((item) => (
+              {navigation.filter(item => !mobileNavigation.find(m => m.name === item.name)).map((item) => (
                 <DropdownMenuItem key={item.name} asChild>
                   <Link href={item.href} className="flex items-center cursor-pointer">
                     <item.icon className="w-4 h-4 mr-2" />

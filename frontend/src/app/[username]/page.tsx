@@ -36,6 +36,7 @@ import { ProfileType } from "@/types/profile"
 import { getUserProfile, toggleFollowUser } from "@/lib/services/profile"
 import { getPostsByUsername } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
+import { FollowersFollowingModal } from "@/components/followers-following-modal"
 
 export default function ProfilePage() {
     const { isAuthenticated } = useAuth()
@@ -49,6 +50,8 @@ export default function ProfilePage() {
     const [followerCount, setFollowerCount] = useState(0)
     const [isLoading, setIsLoading] = useState(false)
     const [posts, setPosts] = useState<PostType[]>([])
+    const [followersModalOpen, setFollowersModalOpen] = useState(false)
+    const [followingModalOpen, setFollowingModalOpen] = useState(false)
 
     // Redirect nếu chưa đăng nhập
     useEffect(() => {
@@ -149,7 +152,7 @@ export default function ProfilePage() {
                                     <div className="flex space-x-2">
                                         {isOwnProfile ? (
                                             <>
-                                                <Link href="/profile/edit">
+                                                <Link href="/account/edit">
                                                     <Button variant="secondary" size="sm">
                                                         Edit profile
                                                     </Button>
@@ -212,23 +215,30 @@ export default function ProfilePage() {
                                     <span>
                                         <strong>{user.posts_count.toLocaleString()}</strong> posts
                                     </span>
-                                    <button className="hover:underline">
+                                    <button 
+                                        onClick={() => setFollowersModalOpen(true)}
+                                        className="hover:opacity-80 transition-opacity cursor-pointer"
+                                    >
                                         <strong>{formatNumber(followerCount)}</strong> followers
                                     </button>
-                                    <button className="hover:underline">
+                                    <button 
+                                        onClick={() => setFollowingModalOpen(true)}
+                                        className="hover:opacity-80 transition-opacity cursor-pointer"
+                                    >
                                         <strong>{user.following_count.toLocaleString()}</strong> following
                                     </button>
                                 </div>
 
                                 <div className="space-y-1">
                                     <h2 className="font-semibold">{user.full_name}</h2>
-                                    <div className="text-sm whitespace-pre-line">{user.bio}</div>
+                                    <p className="text-sm">{user.bio}</p>
+                                    {user.email && <p className="text-sm">📧 {user.email}</p>}
                                     {user.website && (
                                         <a
                                             href={`https://${user.website}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-sm text-blue-600 hover:underline block"
+                                            className="text-sm text-blue-600 hover:underline"
                                         >
                                             {user.website}
                                         </a>
@@ -244,16 +254,16 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Highlights */}
-                        {/* <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
-              {user.highlights.map((highlight) => (
-                <div key={highlight} className="flex flex-col items-center space-y-1 min-w-0">
-                  <div className="w-16 h-16 rounded-full bg-muted border-2 border-muted-foreground/20 flex items-center justify-center">
-                    <span className="text-xs text-center">{highlight.slice(0, 3)}</span>
-                  </div>
-                  <span className="text-xs text-center max-w-[64px] truncate">{highlight}</span>
-                </div>
-              ))}
-            </div> */}
+                        <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
+                            {["Travel", "Food", "Photography", "Behind the Scenes"].map((highlight) => (
+                                <div key={highlight} className="flex flex-col items-center space-y-1 min-w-0">
+                                    <div className="w-16 h-16 rounded-full bg-muted border-2 border-muted-foreground/20 flex items-center justify-center">
+                                        <span className="text-xs text-center">{highlight.slice(0, 3)}</span>
+                                    </div>
+                                    <span className="text-xs text-center max-w-[64px] truncate">{highlight}</span>
+                                </div>
+                            ))}
+                        </div>
 
                         {/* Posts Tabs */}
                         <Tabs defaultValue="posts" className="w-full">
@@ -340,6 +350,26 @@ export default function ProfilePage() {
                     </div>
                 </main>
             </div>
+
+            {user && (
+                <>
+                    <FollowersFollowingModal
+                        isOpen={followersModalOpen}
+                        onOpenChange={setFollowersModalOpen}
+                        username={username}
+                        type="followers"
+                        currentUsername={user.username}
+                    />
+
+                    <FollowersFollowingModal
+                        isOpen={followingModalOpen}
+                        onOpenChange={setFollowingModalOpen}
+                        username={username}
+                        type="following"
+                        currentUsername={user.username}
+                    />
+                </>
+            )}
         </div>
     )
 }
