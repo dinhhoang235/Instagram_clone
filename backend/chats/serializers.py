@@ -57,11 +57,12 @@ class ConversationSerializer(serializers.ModelSerializer):
     time = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
     online = serializers.SerializerMethodField()
+    last_active = serializers.SerializerMethodField()
     partner_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Thread
-        fields = ['id', 'username', 'fullName', 'avatar', 'lastMessage', 'time', 'unread_count', 'online', 'partner_id']
+        fields = ['id', 'username', 'fullName', 'avatar', 'lastMessage', 'time', 'unread_count', 'online', 'last_active', 'partner_id']
 
     def get_other_user(self, obj):
         user = self.context['request'].user
@@ -143,9 +144,33 @@ class ConversationSerializer(serializers.ModelSerializer):
                 return False
             from users.presence import is_user_online
             return is_user_online(other.id)
-        except Exception as e:
+        except Exception:
             # Fallback to False on any error
             return False
+
+    def get_last_active(self, obj):
+        """Return ISO timestamp of user's last seen (None if unknown or currently online)."""
+        try:
+            other = self.get_other_user(obj)
+            if not other:
+                return None
+            # If user is currently online, we can optionally return "now" or None
+            from users.presence import is_user_online
+            if is_user_online(other.id):
+                return None
+
+            profile = getattr(other, 'profile', None)
+            if not profile:
+                return None
+
+            last_seen = getattr(profile, 'last_seen', None)
+            if not last_seen:
+                return None
+
+            # Return ISO format UTC string
+            return last_seen.isoformat()
+        except Exception:
+            return None
         
     def get_partner_id(self, obj):
         other_user = self.get_other_user(obj)

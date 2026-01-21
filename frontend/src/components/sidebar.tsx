@@ -78,10 +78,9 @@ export function Sidebar() {
   const { conversations } = useConversationStore()
   const { unreadCount: unreadNotificationCount } = useNotificationStore()
 
-  const totalUnreadMessages = conversations.reduce(
-    (sum, convo) => sum + convo.unread_count,
-    0
-  )
+  const totalUnreadMessages = Array.isArray(conversations)
+    ? conversations.reduce((sum, convo) => sum + (convo.unread_count || 0), 0)
+    : (console.warn('conversations is not an array:', conversations), 0)
 
   // Effect to update browser title with unread count
   useEffect(() => {

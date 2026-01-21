@@ -113,9 +113,9 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
           }
           // Handle presence updates (from server-side presence counters)
           else if (data.type === "presence_update" && typeof data.user_id !== 'undefined') {
-            console.log("🔔 Presence update:", data.user_id, data.online);
+            console.log("🔔 Presence update:", data.user_id, data.online, data.last_active);
             const { setPartnerOnline } = useConversationStore.getState();
-            setPartnerOnline(data.user_id, !!data.online);
+            setPartnerOnline(data.user_id, !!data.online, data.last_active ?? null);
           }
           // Handle conversation updates
           else if (

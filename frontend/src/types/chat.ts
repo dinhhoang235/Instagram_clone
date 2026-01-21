@@ -19,6 +19,7 @@ export interface ChatProps {
   fullName?: string
   avatar: string
   online: boolean
+  lastActive?: string | null
   currentUserId: number
   partnerId: number
 }
@@ -31,6 +32,7 @@ export interface MessageListType {
     lastMessage: string
     time: string
     online?: boolean
+    last_active?: string | null
     unread_count: number
     partner_id?: number
 }

@@ -5,8 +5,22 @@ import type { MarkReadResponse, SendFirstMessageResponse } from "@/types/chat";
 
 // Lấy danh sách cuộc trò chuyện
 export async function getConversations(): Promise<MessageListType[]> {
-    const res = await api.get<MessageListType[]>("/chats/conversations/")
-    return res.data
+    const res = await api.get<any>("/chats/conversations/")
+    // Backend may return either an array or an object { conversations: [...], errors: [...] }
+    if (res.data && Array.isArray(res.data)) {
+        return res.data as MessageListType[]
+    }
+    if (res.data && Array.isArray(res.data.conversations)) {
+        // Log any partial errors for debugging in dev
+        if (res.data.errors && res.data.errors.length && process.env.NODE_ENV === 'development') {
+            console.warn('Partial conversation errors:', res.data.errors)
+        }
+        return res.data.conversations as MessageListType[]
+    }
+
+    // Fallback - return empty array to avoid runtime errors
+    console.warn('Unexpected conversations response shape:', res.data)
+    return []
 }
 
 // Create a new conversation with a user

@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
+import dayjs from "dayjs"
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip, AlertTriangle, X } from "lucide-react"
+import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip, X } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
@@ -20,6 +21,7 @@ export function Chat({
   username,
   avatar,
   online,
+  lastActive,
   currentUserId,
   partnerId,
   fullName,
@@ -43,6 +45,88 @@ export function Chat({
   const closeViewer = () => setViewerImage(null)
   const [showDetails, setShowDetails] = useState(false)
   // Info button toggles `showDetails` directly now
+
+  // Compute human-friendly online status using `lastActive` (ISO string) passed from backend
+  // Optimized scheduling: compute the exact time until the label must change and use a
+  // single `setTimeout` (less wakeups than interval). Pause updates when tab is hidden.
+  const [tick, setTick] = useState(0)
+  const _timerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const clearTimer = () => {
+      if (_timerRef.current) {
+        clearTimeout(_timerRef.current)
+        _timerRef.current = null
+      }
+    }
+
+    const scheduleNext = () => {
+      clearTimer()
+      if (online || !lastActive) return
+
+      const last = dayjs(lastActive)
+      if (!last.isValid()) return
+
+      const now = dayjs()
+      const diffMinutes = Math.max(0, now.diff(last, 'minute'))
+
+      // If less than an hour, schedule next minute tick; otherwise schedule next hour tick
+      if (diffMinutes < 60) {
+        const next = last.add(diffMinutes + 1, 'minute')
+        let ms = next.diff(now)
+        if (ms < 0) ms = 1000
+        _timerRef.current = window.setTimeout(() => setTick(t => t + 1), ms)
+        return
+      }
+
+      const diffHours = Math.floor(diffMinutes / 60)
+      if (diffHours < 24) {
+        const next = last.add(diffHours + 1, 'hour')
+        let ms = next.diff(now)
+        if (ms < 0) ms = 1000
+        _timerRef.current = window.setTimeout(() => setTick(t => t + 1), ms)
+        return
+      }
+
+      // Older than 24h -> no more updates
+    }
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        clearTimer()
+      } else {
+        scheduleNext()
+      }
+    }
+
+    scheduleNext()
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      clearTimer()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [online, lastActive])
+
+  const statusText = useMemo(() => {
+    // Reference `tick` to satisfy eslint's exhaustive-deps rule and
+    // ensure the memo re-computes when our scheduler fires (no-op use)
+    void tick
+
+    if (online) return 'Active now'
+    if (!lastActive) return 'Offline'
+
+    const last = dayjs(lastActive)
+    if (!last.isValid()) return 'Offline'
+
+    const diffMinutes = Math.max(0, dayjs().diff(last, 'minute'))
+    if (diffMinutes < 60) return `Active ${diffMinutes}m ago`
+
+    const diffHours = Math.floor(diffMinutes / 60)
+    if (diffHours < 24) return `Active ${diffHours}h ago`
+
+    return 'Offline'
+  }, [online, lastActive, tick])
 
   const socketRef = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -667,7 +751,7 @@ export function Chat({
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm truncate">{fullName || username}</div>
             <div className="text-xs text-muted-foreground">
-              {online ? "Active now" : "Offline"}
+              {statusText}
             </div>
           </div>
         </div>
@@ -715,9 +799,9 @@ export function Chat({
                   <button
                     onClick={() => openViewer(msg.image as string)}
                     title="View image"
-                    className="absolute top-2 right-2 z-20 bg-white/90 dark:bg-zinc-900/80 p-1 rounded-full shadow hover:scale-105 transition-transform"
+                    aria-label="View image"
+                    className="absolute top-2 right-2 z-20 dark:bg-zinc-900/80 p-1 rounded-full shadow hover:scale-105 transition-transform"
                   >
-                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
                   </button>
                   <Image 
                     src={msg.image} 
@@ -1002,12 +1086,30 @@ export function Chat({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
           onClick={(e) => {
-            if (e.target === e.currentTarget) closeViewer()
+            // Only close when clicking on the backdrop itself. Also consume the event
+            // to prevent the same touch/click from falling through to underlying controls
+            if (e.target === e.currentTarget) {
+              e.stopPropagation()
+              e.preventDefault()
+              closeViewer()
+            }
           }}
         >
           <button
-            onClick={closeViewer}
-            className="absolute top-4 right-4 z-60 w-10 h-10 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-white items-center justify-center flex"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              closeViewer();
+            }}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              closeViewer();
+            }}
+            aria-label="Close image viewer"
+            title="Close"
+            className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-white items-center justify-center flex pointer-events-auto"
           >
             <X className="w-5 h-5" />
           </button>

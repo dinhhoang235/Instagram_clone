@@ -67,7 +67,8 @@ export default function MessagesPage() {
             updated.unread_count !== activeChat.unread_count ||
             updated.lastMessage !== activeChat.lastMessage ||
             updated.avatar !== activeChat.avatar ||
-            updated.fullName !== activeChat.fullName
+            updated.fullName !== activeChat.fullName ||
+            updated.last_active !== activeChat.last_active
         ) {
             console.log('🔁 Syncing activeChat with store for chat', activeChat.id)
             setActiveChat(updated)
@@ -157,6 +158,7 @@ export default function MessagesPage() {
                                             fullName={activeChat.fullName}
                                             avatar={activeChat.avatar || "/placeholder-user.jpg"}
                                             online={activeChat.online || false}
+                                            lastActive={activeChat.last_active || null}
                                             currentUserId={currentUserId}
                                             partnerId={activeChat.partner_id || 0}
                                             onBack={() => {

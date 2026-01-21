@@ -17,7 +17,7 @@ type ConversationStore = {
     is_sender: boolean
     unread_count?: number
   }) => void
-  setPartnerOnline: (partnerId: number, online: boolean) => void
+  setPartnerOnline: (partnerId: number, online: boolean, lastActive?: string | null) => void
   markAsRead: (id: number) => void
   clearConversations: () => void
 }
@@ -27,7 +27,17 @@ export const useConversationStore = create<ConversationStore>()(
     (set) => ({
       conversations: [],
 
-      setConversations: (convos) => set({ conversations: convos }),
+      setConversations: (convos: any) => {
+        // Normalize possible response shapes: array, { conversations: [...] }, or unexpected
+        if (Array.isArray(convos)) {
+          set({ conversations: convos })
+        } else if (convos && Array.isArray(convos.conversations)) {
+          set({ conversations: convos.conversations })
+        } else {
+          console.warn('setConversations received unexpected payload, normalizing to empty array', convos)
+          set({ conversations: [] })
+        }
+      },
 
   updateConversation: (incoming) =>
     set((state) => {
@@ -86,10 +96,10 @@ export const useConversationStore = create<ConversationStore>()(
       }
     }),
 
-  setPartnerOnline: (partnerId, online) =>
+  setPartnerOnline: (partnerId, online, lastActive = null) =>
     set((state) => ({
       conversations: state.conversations.map((c) =>
-        c.partner_id === partnerId ? { ...c, online } : c
+        c.partner_id === partnerId ? { ...c, online, last_active: lastActive ?? c.last_active } : c
       ),
     })),
 

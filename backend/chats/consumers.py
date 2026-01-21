@@ -5,6 +5,8 @@ from asgiref.sync import sync_to_async
 from django.utils.timezone import localtime
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth.models import User
+from django.utils import timezone
+from users.models import Profile
 
 import logging
 
@@ -239,6 +241,20 @@ class ConversationConsumer(AsyncWebsocketConsumer):
 
                 if new_count == 0:
                     from .models import Thread
+                    # Update last_seen first so we can include it in the presence payload
+                    now = timezone.now()
+                    try:
+                        def set_last_seen(user, at_time):
+                            # Use a direct update to avoid possible profile related attribute errors
+                            Profile.objects.filter(user=user).update(last_seen=at_time)
+
+                        await sync_to_async(set_last_seen)(self.scope['user'], now)
+                        logger.info(f"Set last_seen for user {self.scope['user'].id} to {now}")
+                    except Exception as e:
+                        logger.error(f"Failed to set last_seen for user {self.scope['user'].id}: {e}")
+
+                    # Broadcast presence update including last_active timestamp
+                    last_active_iso = now.isoformat()
                     thread_list = await sync_to_async(list)(Thread.objects.filter(users=self.scope['user']))
                     for thread in thread_list:
                         participants = await sync_to_async(list)(thread.users.exclude(id=self.scope['user'].id))
@@ -249,6 +265,7 @@ class ConversationConsumer(AsyncWebsocketConsumer):
                                     "type": "presence_update",
                                     "user_id": self.scope['user'].id,
                                     "online": False,
+                                    "last_active": last_active_iso,
                                 }
                             )
             except Exception as e:
@@ -278,10 +295,15 @@ class ConversationConsumer(AsyncWebsocketConsumer):
     async def presence_update(self, event):
         """Pass presence updates to the client side so frontend can update conversation list."""
         try:
-            await self.send(text_data=json.dumps({
+            payload = {
                 "type": "presence_update",
                 "user_id": event.get("user_id"),
-                "online": event.get("online")
-            }))
+                "online": event.get("online"),
+            }
+            # If a last_active timestamp was included, forward it to clients
+            if event.get("last_active"):
+                payload["last_active"] = event.get("last_active")
+
+            await self.send(text_data=json.dumps(payload))
         except Exception as e:
             logger.error(f"ConversationConsumer presence_update error: {str(e)}")

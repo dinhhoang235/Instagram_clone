@@ -265,9 +265,8 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
   // Note: WebSocket connection is now handled globally by WebSocketProvider
   // This ensures real-time updates work everywhere, not just on the messages page
 
-  const filtered = conversations.filter((c) =>
-    c.username?.toLowerCase().includes(search.toLowerCase())
-  )
+  const convArray = Array.isArray(conversations) ? conversations : []
+  const filtered = convArray.filter((c) => c.username?.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <div className="w-full md:w-80 lg:w-96 border-r flex flex-col h-full bg-white dark:bg-zinc-900">

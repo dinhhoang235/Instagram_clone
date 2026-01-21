@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Grid, Users, Hash, MapPin } from "lucide-react"
+import { Grid, Users, Hash, MapPin, Heart, MessageSquare } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { redirect } from "next/navigation"
 import Image from "next/image"
@@ -99,9 +99,11 @@ export default function ExplorePage() {
                                                     />
                                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4 text-white">
                                                         <div className="flex items-center space-x-1">
+                                                            <Heart className="w-5 h-5 fill-white" />
                                                             <span className="font-semibold">{post.likes}</span>
                                                         </div>
                                                         <div className="flex items-center space-x-1">
+                                                            <MessageSquare className="w-5 h-5 fill-white" />
                                                             <span className="font-semibold">{post.comments}</span>
                                                         </div>
                                                     </div>

@@ -51,8 +51,29 @@ class ConversationListView(APIView):
             # Extract just the threads
             sorted_threads = [item['thread'] for item in threads_list]
 
-            serializer = ConversationSerializer(sorted_threads, many=True, context={'request': request})
-            return Response(serializer.data)
+            # Attempt to serialize each thread individually so we can log and skip failures
+            results = []
+            errors = []
+            for thread in sorted_threads:
+                try:
+                    ser = ConversationSerializer(thread, many=False, context={'request': request})
+                    results.append(ser.data)
+                except Exception as ex:
+                    logger.exception(f"Failed to serialize thread {getattr(thread, 'id', 'unknown')}")
+                    errors.append({'thread_id': getattr(thread, 'id', None), 'error': str(ex)})
+
+            # If nothing serialized successfully, return 500 with errors for debugging
+            if not results:
+                logger.error("No conversations serialized successfully", extra={'errors': errors})
+                return Response({'error': 'Failed to serialize conversations', 'details': errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Return partial results and include any thread-level errors for visibility
+            response_payload = {'conversations': results}
+            if errors:
+                response_payload['errors'] = errors
+
+            return Response(response_payload)
+
         except Exception as e:
             logger.exception("Failed to load conversations")
             # Provide minimal debug info in development; hide details in production
