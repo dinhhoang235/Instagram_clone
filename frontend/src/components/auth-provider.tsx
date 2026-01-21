@@ -14,6 +14,7 @@ type User = {
   id: number
   email: string
   username: string
+  fullName?: string
   avatar?: string
 }
 
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: number
         email: string
         username: string
+        full_name?: string
         image?: string
       }>('/profiles/me/')
 
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: data.id,
         email: data.email,
         username: data.username,
+        fullName: data.full_name,
         avatar: data.image,
       }
 

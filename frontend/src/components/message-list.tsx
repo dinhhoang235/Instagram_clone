@@ -20,9 +20,10 @@ interface MessageListProps {
   activeChat: MessageListType | null
   onSelectUserForNewMessage?: (user: MinimalUser) => void
   currentUsername?: string
+  currentUserFullName?: string
 }
 
-export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessage, currentUsername }: MessageListProps) {
+export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessage, currentUsername, currentUserFullName }: MessageListProps) {
   const [search, setSearch] = useState("")
   const [timeRefresh, setTimeRefresh] = useState(0) // Add state variable to force timestamp updates
   const [createMessageOpen, setCreateMessageOpen] = useState(false)
@@ -236,7 +237,7 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
       {/* Header with username and create message button */}
       <div className="px-4 pt-4 pb-3 border-b flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-bold">{currentUsername || "Messages"}</h2>
+          <h2 className="text-xl font-bold">{currentUserFullName || currentUsername || "Messages"}</h2>
           <Button 
             variant="ghost" 
             size="icon"

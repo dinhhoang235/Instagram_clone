@@ -78,6 +78,7 @@ export default function MessagesPage() {
                             onSelectChat={saveActiveChat} 
                             activeChat={activeChat}
                             currentUsername={user?.username}
+                            currentUserFullName={user?.fullName}
                             onSelectUserForNewMessage={(user) => {
                                 // Check if conversation already exists
                                 const existingConversation = conversations.find(
