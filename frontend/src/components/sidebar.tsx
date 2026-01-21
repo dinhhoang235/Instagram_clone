@@ -111,8 +111,9 @@ export function Sidebar() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b">
         <div className="flex items-center justify-between h-14 px-4">
           {/* Instagram Logo */}
-          <Link href="/" className="flex items-center">
-            <span className="text-2xl font-bold" style={{ fontFamily: "'Pacifico', cursive, 'Brush Script MT', cursive" }}>
+          <Link href="/" className="flex items-center gap-2">
+            <Instagram className="w-6 h-6" />
+            <span className="text-xl font-bold" style={{ fontFamily: "'Pacifico', cursive, 'Brush Script MT', cursive" }}>
               Instagram
             </span>
           </Link>
@@ -143,10 +144,10 @@ export function Sidebar() {
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background">
       <div className="flex flex-col flex-1 min-h-0 pt-5 pb-4">
-        <div className="flex items-center flex-shrink-0 px-6">
+        <Link href="/" className="flex items-center flex-shrink-0 px-6 hover:opacity-80 transition-opacity">
           <Instagram className="w-8 h-8" />
           <span className="ml-2 text-xl font-bold">Instagram</span>
-        </div>
+        </Link>
         <nav className="flex-1 px-3 mt-8 space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href
