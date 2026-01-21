@@ -98,15 +98,15 @@ class ConversationSerializer(serializers.ModelSerializer):
         current_user = request.user if request else None
         # If the last message contains an image or file, show a friendly preview
         if getattr(last, 'image', None):
-            verb = 'sent an image'
+            verb = 'sent a photo.'
             if current_user and last.sender == current_user:
-                return f"You: {verb}"
+                return f"You {verb}"
             return f"{self.get_short_name(obj)} {verb}"
 
         if getattr(last, 'file', None):
-            verb = 'sent a file'
+            verb = 'sent a file.'
             if current_user and last.sender == current_user:
-                return f"You: {verb}"
+                return f"You {verb}"
             return f"{self.get_short_name(obj)} {verb}"
 
         # Fallback to text if present
@@ -117,8 +117,8 @@ class ConversationSerializer(serializers.ModelSerializer):
 
         # Default fallback when no text/image/file
         if current_user and last.sender == current_user:
-            return "You: sent a file"
-        return f"{self.get_short_name(obj)} sent a file"
+            return "You sent a file"
+        return f"{self.get_short_name(obj)} sent a file."
 
     def get_time(self, obj):
         last = obj.last_message()

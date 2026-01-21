@@ -239,19 +239,19 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
     // Only handle empty / "None" fallbacks here to avoid duplicate logic.
     try {
       if (!msg || msg.trim() === "") {
-        if (convo) return `${getShortName(convo)} sent a file`
+        if (convo) return `${getShortName(convo)} sent a file.`
         return "sent a file"
       }
 
       if (/\bnone\b/i.test(msg)) {
         // Preserve outgoing "You:" when present
-        if (/^You:\s*/i.test(msg)) return 'You: sent a file'
+        if (/^You:\s*/i.test(msg)) return 'You sent a file.'
         return `${getShortName(convo)} sent a file`
       }
 
       // Handle image placeholders
       if (msg.toLowerCase().includes('[image]')) {
-        if (/^You:\s*/i.test(msg)) return 'You: sent an image'
+        if (/^You:\s*/i.test(msg)) return 'You sent an photo.'
         return `${getShortName(convo)} sent an image`
       }
 
