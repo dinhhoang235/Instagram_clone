@@ -206,10 +206,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         avatar_file = validated_data.pop('avatarFile', None)
 
-        if validated_data.get('avatar') in [None, ""]:
+        # Chỉ xóa avatar nếu người dùng explicitly gửi empty value, không phải khi không gửi gì
+        if 'avatar' in validated_data and validated_data.get('avatar') in [None, ""]:
             instance.avatar.delete(save=False)
             instance.avatar = None
-            validated_data.pop('avatar', None) 
+        validated_data.pop('avatar', None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
