@@ -68,7 +68,8 @@ class ConversationSerializer(serializers.ModelSerializer):
         return obj.users.exclude(id=user.id).first()
 
     def get_username(self, obj):
-        return self.get_other_user(obj).username
+        other = self.get_other_user(obj)
+        return other.username if other else "Unknown"
 
     def get_fullName(self, obj):
         other_user = self.get_other_user(obj)
@@ -135,8 +136,16 @@ class ConversationSerializer(serializers.ModelSerializer):
         return unread_count
 
     def get_online(self, obj):
-        other = self.get_other_user(obj)
-        return getattr(other.profile, 'is_online', False) if other else False
+        """Return True if the other user is currently online (based on presence cache)."""
+        try:
+            other = self.get_other_user(obj)
+            if not other:
+                return False
+            from users.presence import is_user_online
+            return is_user_online(other.id)
+        except Exception as e:
+            # Fallback to False on any error
+            return False
         
     def get_partner_id(self, obj):
         other_user = self.get_other_user(obj)

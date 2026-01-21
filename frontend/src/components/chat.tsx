@@ -5,7 +5,8 @@ import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip } from "lucide-react"
+import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip, AlertTriangle, X } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
 import api from "@/lib/api"
@@ -36,6 +37,12 @@ export function Chat({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [viewerImage, setViewerImage] = useState<string | null>(null)
+
+  const openViewer = (url: string) => setViewerImage(url)
+  const closeViewer = () => setViewerImage(null)
+  const [showDetails, setShowDetails] = useState(false)
+  // Info button toggles `showDetails` directly now
 
   const socketRef = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -320,6 +327,16 @@ export function Chat({
       }
     }
   }, [showEmojiPicker])
+  
+  // Close image viewer on Escape
+  useEffect(() => {
+    if (!viewerImage) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeViewer()
+    }
+    document.addEventListener("keydown", handleKey)
+    return () => document.removeEventListener("keydown", handleKey)
+  }, [viewerImage])
   
   useEffect(() => {
     if (!chatId) return
@@ -609,7 +626,7 @@ export function Chat({
   }, [messages, partnerId, detectedPartnerId, currentUserId, avatar, username]);
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900">
+    <div className={`flex-1 flex flex-col bg-white dark:bg-zinc-900 ${showDetails ? 'lg:pr-80' : ''}`}>
       {/* Header */}
       <div className="px-4 py-3 border-b flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -618,27 +635,55 @@ export function Chat({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="lg:hidden -ml-2 flex-shrink-0 h-10 w-10"
+              className="lg:hidden -ml-2 flex-shrink-0 h-12 w-12 rounded-full bg-transparent hover:bg-zinc-800/10"
               onClick={onBack}
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-7 h-7" />
             </Button>
           )}
-          <Avatar className="w-10 h-10 flex-shrink-0">
-            <AvatarImage src={avatar || "/placeholder.svg"} alt={username} />
-            <AvatarFallback>{username.slice(0, 2).toUpperCase()}</AvatarFallback>
+          <Avatar className="relative w-10 h-10 overflow-visible rounded-full flex-shrink-0">
+            <AvatarImage
+              src={avatar || undefined}
+              alt={username}
+              className="rounded-full object-cover"
+            />
+
+            <AvatarFallback className="rounded-full text-xl">
+              😊
+            </AvatarFallback>
+
+            {online && (
+              <span
+                className="
+                  absolute -bottom-0.5 -right-0.5
+                  h-3 w-3 rounded-full
+                  bg-emerald-500
+                  ring-2 ring-white
+                  dark:ring-zinc-900
+                "
+              />
+            )}
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm truncate">{fullName || username}</div>
             <div className="text-xs text-muted-foreground">
-              {isConnected ? "Active now" : online ? "Active now" : "Offline"}
+              {online ? "Active now" : "Offline"}
             </div>
           </div>
         </div>
-        <div className="flex space-x-1 flex-shrink-0">
-          <Button variant="ghost" size="icon" className="h-10 w-10"><Phone className="w-5 h-5" /></Button>
-          <Button variant="ghost" size="icon" className="h-10 w-10"><Video className="w-5 h-5" /></Button>
-          <Button variant="ghost" size="icon" className="hidden lg:flex h-10 w-10"><Info className="w-5 h-5" /></Button>
+          <div className="flex space-x-1 flex-shrink-0">
+          <Button variant="ghost" size="icon" className="hidden lg:flex h-12 w-12 rounded-full bg-transparent hover:bg-zinc-800/10"><Phone className="w-6 h-6" /></Button>
+          <Button variant="ghost" size="icon" className="hidden lg:flex h-12 w-12 rounded-full bg-transparent hover:bg-zinc-800/10"><Video className="w-6 h-6" /></Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`h-12 w-12 rounded-full ${showDetails ? 'bg-zinc-800 text-white' : 'bg-transparent hover:bg-zinc-800/10'}`}
+            onClick={() => setShowDetails(prev => !prev)}
+            aria-pressed={showDetails}
+            aria-label="Details"
+          >
+            <Info className="w-6 h-6" />
+          </Button>
         </div>
       </div>
 
@@ -666,13 +711,23 @@ export function Chat({
             )}
             <div className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
               {msg.image && (
-                <Image 
-                  src={msg.image} 
-                  alt="chat-image" 
-                  className="rounded-2xl max-w-full h-auto mb-2"
-                  width={400}
-                  height={400}
-                />
+                <div className="relative mb-2">
+                  <button
+                    onClick={() => openViewer(msg.image as string)}
+                    title="View image"
+                    className="absolute top-2 right-2 z-20 bg-white/90 dark:bg-zinc-900/80 p-1 rounded-full shadow hover:scale-105 transition-transform"
+                  >
+                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                  </button>
+                  <Image 
+                    src={msg.image} 
+                    alt="chat-image" 
+                    className="rounded-2xl max-w-full h-auto mb-2 cursor-pointer"
+                    width={400}
+                    height={400}
+                    onClick={() => openViewer(msg.image as string)}
+                  />
+                </div>
               )}
               {msg.text && (
                 <div
@@ -727,7 +782,6 @@ export function Chat({
             >
               <EmojiPicker 
                 onEmojiClick={handleEmojiClick}
-                theme="auto"
                 width={320}
                 height={400}
               />
@@ -848,6 +902,119 @@ export function Chat({
           >
             ×
           </Button>
+        </div>
+      )}
+      {showDetails && (
+        <>
+          {/* Mobile full-screen panel */}
+          <div className="lg:hidden fixed inset-0 z-50 bg-white dark:bg-zinc-900 flex flex-col">
+            <div className="px-4 py-3 border-b flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setShowDetails(false)}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="font-semibold">Details</div>
+            </div>
+
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Mute messages</div>
+                <div className="text-xs text-muted-foreground">Turn off notifications for this conversation</div>
+              </div>
+              <Switch aria-label="Mute messages" />
+            </div>
+
+            <div className="p-4 overflow-auto flex-1">
+              <div className="text-sm font-medium text-muted-foreground mb-3">Members</div>
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={avatar || "/placeholder-user.jpg"} alt={username} />
+                  <AvatarFallback>{username.slice(0,2).toUpperCase()}</AvatarFallback>
+                  {online && (
+                    <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                  )}
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{fullName || username}</div>
+                  <div className="text-sm text-muted-foreground truncate">{username}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t p-4">
+              <div className="text-sm font-medium text-muted-foreground mb-2">Nicknames</div>
+
+              <div className="mt-4 space-y-3">
+                <button className="w-full text-left text-sm text-red-500">Report</button>
+                <button className="w-full text-left text-sm text-red-500">Block</button>
+                <button className="w-full text-left text-sm text-red-500">Delete chat</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop aside */}
+          <aside className="hidden lg:flex fixed right-0 top-0 bottom-0 w-80 z-50 bg-white dark:bg-zinc-900 border-l">
+            <div className="h-full flex flex-col">
+              <div className="px-4 py-4 border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-lg font-semibold">Details</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Mute messages</div>
+                  <div className="text-xs text-muted-foreground">Turn off notifications for this conversation</div>
+                </div>
+                <Switch aria-label="Mute messages" />
+              </div>
+
+              <div className="px-4 py-4 overflow-auto">
+                <div className="text-sm font-medium text-muted-foreground mb-3">Members</div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={avatar || "/placeholder-user.jpg"} alt={username} />
+                    <AvatarFallback>{username.slice(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{fullName || username}</div>
+                    <div className="text-sm text-muted-foreground truncate">{username}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-auto border-t p-4">
+                <div className="text-sm font-medium text-muted-foreground mb-2">Nicknames</div>
+
+                <div className="mt-4 space-y-3">
+                  <button className="w-full text-left text-sm text-red-500">Report</button>
+                  <button className="w-full text-left text-sm text-red-500">Block</button>
+                  <button className="w-full text-left text-sm text-red-500">Delete chat</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
+      {/* Image Viewer Modal */}
+      {viewerImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeViewer()
+          }}
+        >
+          <button
+            onClick={closeViewer}
+            className="absolute top-4 right-4 z-60 w-10 h-10 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-white items-center justify-center flex"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="relative max-w-[95%] max-h-[95%] w-[min(95vw,1200px)] h-[min(95vh,800px)]">
+            <Image src={viewerImage} alt="preview" fill className="object-contain rounded" />
+          </div>
         </div>
       )}
     </div>

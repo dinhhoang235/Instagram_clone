@@ -196,6 +196,32 @@ class ConversationConsumer(AsyncWebsocketConsumer):
             self.room_group_name = f"conversations_{user.id}"
             await self.channel_layer.group_add(self.room_group_name, self.channel_name)
             await self.accept()
+
+            # Presence: increment counter and broadcast status if transitioned to online
+            try:
+                from users.presence import increment_presence, is_user_online
+                new_count = increment_presence(user.id)
+                logger.info(f"User {user.id} presence incremented to {new_count}")
+
+                # If this connection made the user go from 0 -> 1, broadcast online status
+                if new_count == 1:
+                    # Notify all participants in threads with this user
+                    from .models import Thread
+                    thread_list = await sync_to_async(list)(Thread.objects.filter(users=user))
+                    for thread in thread_list:
+                        participants = await sync_to_async(list)(thread.users.exclude(id=user.id))
+                        for p in participants:
+                            await self.channel_layer.group_send(
+                                f"conversations_{p.id}",
+                                {
+                                    "type": "presence_update",
+                                    "user_id": user.id,
+                                    "online": True,
+                                }
+                            )
+            except Exception as e:
+                logger.error(f"Presence increment error: {e}")
+
         except Exception as e:
             logger.error(f"ConversationConsumer connect error: {str(e)}")
             await self.close(code=4500)
@@ -204,6 +230,30 @@ class ConversationConsumer(AsyncWebsocketConsumer):
         try:
             if hasattr(self, 'room_group_name'):
                 await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+            # Presence: decrement counter and broadcast if transitioned to offline
+            try:
+                from users.presence import decrement_presence, is_user_online
+                new_count = decrement_presence(self.scope['user'].id)
+                logger.info(f"User {self.scope['user'].id} presence decremented to {new_count}")
+
+                if new_count == 0:
+                    from .models import Thread
+                    thread_list = await sync_to_async(list)(Thread.objects.filter(users=self.scope['user']))
+                    for thread in thread_list:
+                        participants = await sync_to_async(list)(thread.users.exclude(id=self.scope['user'].id))
+                        for p in participants:
+                            await self.channel_layer.group_send(
+                                f"conversations_{p.id}",
+                                {
+                                    "type": "presence_update",
+                                    "user_id": self.scope['user'].id,
+                                    "online": False,
+                                }
+                            )
+            except Exception as e:
+                logger.error(f"Presence decrement error: {e}")
+
         except Exception as e:
             logger.error(f"ConversationConsumer disconnect error: {str(e)}")
 
@@ -224,3 +274,14 @@ class ConversationConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps(event))
         except Exception as e:
             logger.error(f"ConversationConsumer chat_update error: {str(e)}")
+
+    async def presence_update(self, event):
+        """Pass presence updates to the client side so frontend can update conversation list."""
+        try:
+            await self.send(text_data=json.dumps({
+                "type": "presence_update",
+                "user_id": event.get("user_id"),
+                "online": event.get("online")
+            }))
+        except Exception as e:
+            logger.error(f"ConversationConsumer presence_update error: {str(e)}")

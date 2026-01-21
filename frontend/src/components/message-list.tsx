@@ -339,13 +339,13 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
               }}
             >
               <div className="relative flex-shrink-0">
-                <Avatar className="w-14 h-14">
-                  <AvatarImage src={convo.avatar || "/placeholder-user.jpg"} alt={convo.username} />
-                  <AvatarFallback>{convo.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                <Avatar className="relative w-14 h-14 overflow-visible rounded-full flex-shrink-0">
+                  <AvatarImage src={convo.avatar || "/placeholder-user.jpg"} alt={convo.username} className="rounded-full object-cover" />
+                  <AvatarFallback className="rounded-full text-xl">{convo.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  {convo.online && (
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                  )}
                 </Avatar>
-                {convo.online && (
-                  <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
-                )}
               </div>
 
               <div className="ml-3 flex-1 overflow-hidden min-w-0">

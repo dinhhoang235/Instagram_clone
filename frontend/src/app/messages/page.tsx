@@ -54,6 +54,26 @@ export default function MessagesPage() {
         console.log('🧪 State change - selectedUser:', selectedUser?.username, 'activeChat:', activeChat?.id);
     }, [selectedUser, activeChat])
 
+    // Keep the activeChat object in sync with the conversation store
+    // This ensures realtime updates (presence/unread/lastMessage) reflect in the open Chat
+    useEffect(() => {
+        if (!activeChat) return
+        const updated = conversations.find(c => c.id === activeChat.id)
+        if (!updated) return
+
+        // Sync when important fields change
+        if (
+            updated.online !== activeChat.online ||
+            updated.unread_count !== activeChat.unread_count ||
+            updated.lastMessage !== activeChat.lastMessage ||
+            updated.avatar !== activeChat.avatar ||
+            updated.fullName !== activeChat.fullName
+        ) {
+            console.log('🔁 Syncing activeChat with store for chat', activeChat.id)
+            setActiveChat(updated)
+        }
+    }, [conversations, activeChat])
+
     return (
         <div className="min-h-screen bg-background flex">
             {/* Sidebar - hidden on mobile when chat is active */}

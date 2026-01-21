@@ -13,45 +13,51 @@ from users.models import Profile
 from django.db.models import Q, Exists, OuterRef
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import logging
+
+logger = logging.getLogger("django")
 
 class ConversationListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Get all threads for the user
-        threads = Thread.objects.filter(users=request.user)
-        
-        # Sort by most recent message timestamp only
-        # Unread status is just for UI badge, not for sorting
-        # This prevents the list from jumping when user marks as read
-        
-        threads_list = []
-        for thread in threads:
-            # Get the last message in the thread
-            last_message = thread.last_message()
-            
-            # Check if current user has unread messages in this thread
-            unread_count = Message.objects.filter(
-                thread=thread
-            ).exclude(sender=request.user).exclude(read_by=request.user).count()
-            
-            threads_list.append({
-                'thread': thread,
-                'last_message_timestamp': last_message.timestamp if last_message else thread.updated,
-                'unread_count': unread_count
-            })
-        
-        # Sort ONLY by most recent message timestamp (descending)
-        # Don't sort by unread_count - that causes the list to jump when marking as read
-        threads_list.sort(
-            key=lambda x: -x['last_message_timestamp'].timestamp()
-        )
-        
-        # Extract just the threads
-        sorted_threads = [item['thread'] for item in threads_list]
-        
-        serializer = ConversationSerializer(sorted_threads, many=True, context={'request': request})
-        return Response(serializer.data)
+        try:
+            # Get all threads for the user
+            threads = Thread.objects.filter(users=request.user)
+
+            # Build a list of thread metadata with safe timestamp handling
+            threads_list = []
+            for thread in threads:
+                # Get the last message in the thread
+                last_message = thread.last_message()
+
+                # Check if current user has unread messages in this thread
+                unread_count = Message.objects.filter(
+                    thread=thread
+                ).exclude(sender=request.user).exclude(read_by=request.user).count()
+
+                threads_list.append({
+                    'thread': thread,
+                    'last_message_timestamp': last_message.timestamp if last_message else thread.updated,
+                    'unread_count': unread_count
+                })
+
+            # Sort ONLY by most recent message timestamp (descending)
+            # Use safe fallback if timestamp is None
+            threads_list.sort(
+                key=lambda x: -(x['last_message_timestamp'].timestamp() if x['last_message_timestamp'] else 0)
+            )
+
+            # Extract just the threads
+            sorted_threads = [item['thread'] for item in threads_list]
+
+            serializer = ConversationSerializer(sorted_threads, many=True, context={'request': request})
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("Failed to load conversations")
+            # Provide minimal debug info in development; hide details in production
+            detail = str(e) if getattr(__import__('os'), 'environ', {}).get('DJANGO_DEBUG', 'False') == 'True' else 'Internal server error'
+            return Response({'error': 'Failed to load conversations', 'detail': detail}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def post(self, request):
         user_id = request.data.get('user_id')

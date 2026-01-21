@@ -17,6 +17,7 @@ type ConversationStore = {
     is_sender: boolean
     unread_count?: number
   }) => void
+  setPartnerOnline: (partnerId: number, online: boolean) => void
   markAsRead: (id: number) => void
   clearConversations: () => void
 }
@@ -84,6 +85,13 @@ export const useConversationStore = create<ConversationStore>()(
         return { conversations: [newConvo, ...updated] }
       }
     }),
+
+  setPartnerOnline: (partnerId, online) =>
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.partner_id === partnerId ? { ...c, online } : c
+      ),
+    })),
 
   markAsRead: (id) =>
     set((state) => {
