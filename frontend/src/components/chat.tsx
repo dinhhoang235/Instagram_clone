@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft } from "lucide-react"
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
 import { useConversationStore } from "@/stores/useConversationStore"
 import type { ChatProps, MessageType } from "@/types/chat"
@@ -28,11 +29,13 @@ export function Chat({
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   const socketRef = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const hasMarkedAsReadRef = useRef<boolean>(false) // Flag to prevent marking as read multiple times
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
 
   const sendMarkRead = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -40,6 +43,11 @@ export function Chat({
       socketRef.current.send(JSON.stringify({ type: "mark_read" }))
     }
   }, [socketRef])
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage(prev => prev + emojiData.emoji)
+    setShowEmojiPicker(false)
+  }
 
   useEffect(() => {
     async function init() {
@@ -176,6 +184,22 @@ export function Chat({
 
   // Store partnerId in component state so we can update it when detected
   const [detectedPartnerId, setDetectedPartnerId] = useState<number | undefined>(undefined);
+  
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+
+    if (showEmojiPicker) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside)
+      }
+    }
+  }, [showEmojiPicker])
   
   useEffect(() => {
     if (!chatId) return
@@ -502,9 +526,31 @@ export function Chat({
       </div>
 
       <div className="px-4 py-3 border-t flex items-center gap-2 flex-shrink-0">
-        <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9">
-          <Smile className="w-5 h-5" />
-        </Button>
+        <div className="relative">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="flex-shrink-0 h-9 w-9"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          >
+            <Smile className="w-5 h-5" />
+          </Button>
+          
+          {/* Emoji Picker */}
+          {showEmojiPicker && (
+            <div 
+              ref={emojiPickerRef}
+              className="absolute bottom-12 left-0 z-50"
+            >
+              <EmojiPicker 
+                onEmojiClick={handleEmojiClick}
+                theme="auto"
+                width={320}
+                height={400}
+              />
+            </div>
+          )}
+        </div>
         <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9">
           <ImageIcon className="w-5 h-5" />
         </Button>
