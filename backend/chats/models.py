@@ -14,7 +14,9 @@ class Thread(models.Model):
 class Message(models.Model):
     thread = models.ForeignKey(Thread, on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
-    text = models.TextField()
+    text = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='chat_images/', blank=True, null=True)
+    file = models.FileField(upload_to='chat_files/', blank=True, null=True)
     timestamp = models.DateTimeField(default=timezone.now)
     read_by = models.ManyToManyField(User, related_name='read_messages', blank=True)
     

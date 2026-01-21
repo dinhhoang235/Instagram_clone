@@ -1,12 +1,14 @@
 "use client"
 
-import React, { useEffect, useRef, useState, useCallback } from "react"
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
+import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft } from "lucide-react"
+import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip } from "lucide-react"
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
+import api from "@/lib/api"
 import { useConversationStore } from "@/stores/useConversationStore"
 import type { ChatProps, MessageType } from "@/types/chat"
 
@@ -30,12 +32,19 @@ export function Chat({
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const socketRef = useRef<WebSocket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const hasMarkedAsReadRef = useRef<boolean>(false) // Flag to prevent marking as read multiple times
   const emojiPickerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileUploadRef = useRef<HTMLInputElement>(null)
+  const [detectedPartnerId, setDetectedPartnerId] = useState<number | null>(null)
 
   const sendMarkRead = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -47,6 +56,120 @@ export function Chat({
   const handleEmojiClick = (emojiData: EmojiClickData) => {
     setNewMessage(prev => prev + emojiData.emoji)
     setShowEmojiPicker(false)
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedImage(file)
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setPreviewUrl(event.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+    }
+  }
+
+  const handleSendImageMessage = async () => {
+    if (!selectedImage || !isConnected) return
+    
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', selectedImage)
+      formData.append('text', newMessage || '')
+
+      const response = await api.post(
+        `/chats/threads/${chatId}/send-file/`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+
+      if (response.data) {
+        // Removed: const newMsg = response.data and setMessages to prevent duplication
+        setShouldScrollToBottom(true)
+        setNewMessage('')
+        setSelectedImage(null)
+        setPreviewUrl(null)
+        
+        // Update conversation store
+        const { updateConversation } = useConversationStore.getState()
+        updateConversation({
+          chat_id: chatId,
+          message: newMessage || '[Image]',
+          timestamp: new Date().toISOString(),
+          sender: {
+            username: username,
+            avatar: avatar,
+            id: currentUserId
+          },
+          is_sender: true,
+          unread_count: 0
+        })
+      }
+    } catch (error) {
+      console.error('Failed to send image:', error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleSendFileMessage = async () => {
+    if (!selectedFile || !isConnected) return
+    
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('text', newMessage || '')
+
+      const response = await api.post(
+        `/chats/threads/${chatId}/send-file/`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+
+      if (response.data) {
+        // Removed: const newMsg = response.data and setMessages to prevent duplication
+        setShouldScrollToBottom(true)
+        setNewMessage('')
+        setSelectedFile(null)
+        
+        // Update conversation store
+        const { updateConversation } = useConversationStore.getState()
+        updateConversation({
+          chat_id: chatId,
+          message: newMessage || `[File: ${selectedFile.name}]`,
+          timestamp: new Date().toISOString(),
+          sender: {
+            username: username,
+            avatar: avatar,
+            id: currentUserId
+          },
+          is_sender: true,
+          unread_count: 0
+        })
+      }
+    } catch (error) {
+      console.error('Failed to send file:', error)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   useEffect(() => {
@@ -182,9 +305,6 @@ export function Chat({
     return () => container.removeEventListener("scroll", handleScroll)
   }, [loadMoreMessages, hasMore, isLoadingMore])
 
-  // Store partnerId in component state so we can update it when detected
-  const [detectedPartnerId, setDetectedPartnerId] = useState<number | undefined>(undefined);
-  
   // Close emoji picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -246,6 +366,7 @@ export function Chat({
         // Handle regular message
         const newMessage = { 
           ...data, 
+          id: data.id || data.message_id, // Normalize ID field
           readByIds: Array.isArray(data.readByIds) ? data.readByIds : [],
           // Ensure sender_id is present in the message
           sender_id: data.sender_id || null
@@ -314,6 +435,38 @@ export function Chat({
     setShouldScrollToBottom(true) // Scroll to bottom when sending message
   }
 
+  const handleSend = () => {
+    if (selectedImage) {
+      handleSendImageMessage()
+    } else if (selectedFile) {
+      handleSendFileMessage()
+    } else if (newMessage.trim()) {
+      handleSendMessage()
+    } else {
+      // Send heart emoji
+      if (!isConnected || !socketRef.current) return
+      
+      socketRef.current.send(JSON.stringify({ text: "❤️" }))
+      
+      // Update conversation store immediately when heart is sent
+      const { updateConversation } = useConversationStore.getState()
+      updateConversation({
+        chat_id: chatId,
+        message: "❤️",
+        timestamp: new Date().toISOString(),
+        sender: {
+          username: username,
+          avatar: avatar,
+          id: currentUserId
+        },
+        is_sender: true,
+        unread_count: 0
+      })
+      
+      setShouldScrollToBottom(true) // Scroll to bottom when sending heart
+    }
+  }
+
   useEffect(() => {
     if (shouldScrollToBottom) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -334,6 +487,126 @@ export function Chat({
       window.removeEventListener('focus', handleFocus);
     };
   }, [sendMarkRead]);
+
+  // Calculate read receipt to avoid re-computing on every render
+  const readReceipt = useMemo(() => {
+    if (messages.length === 0) return null;
+
+    // Use partnerId from props or detected from messages
+    let effectivePartnerId = partnerId || detectedPartnerId || 0;
+    
+    // Try to determine partner ID from messages if it's not provided
+    if (!effectivePartnerId || effectivePartnerId === 0) {
+      console.log("⚠️ partnerId is missing or zero, trying to determine from messages...");
+      
+      // Find messages that aren't from the current user
+      const partnerMessages = messages.filter(m => !m.isOwn);
+      if (partnerMessages.length > 0) {
+        // First try: Check if any message from partner has a sender_id
+        for (const msg of partnerMessages) {
+          if (msg.sender_id && msg.sender_id !== currentUserId) {
+            effectivePartnerId = msg.sender_id;
+            console.log("✅ Found partner ID from message sender_id:", effectivePartnerId);
+            break;
+          }
+        }
+        
+        // Second try: If we still don't have a valid partnerId, try with readByIds
+        if (!effectivePartnerId || effectivePartnerId === 0) {
+          const senderIds = new Set<number>();
+          
+          // Look through all messages to find sender IDs
+          messages.forEach(msg => {
+            if (msg.readByIds && msg.readByIds.length) {
+              msg.readByIds.forEach(id => {
+                if (id !== currentUserId) {
+                  senderIds.add(id);
+                }
+              });
+            }
+          });
+          
+          // If we found any sender IDs, use the first one
+          if (senderIds.size > 0) {
+            effectivePartnerId = Array.from(senderIds)[0] as number;
+            console.log("✅ Determined partner ID from readByIds:", effectivePartnerId);
+          }
+        }
+      }
+    }
+    
+    // Make sure partnerId is valid and not 0
+    if (!effectivePartnerId || effectivePartnerId === 0) {
+      console.log("❌ Read receipt not shown: partnerId is missing or zero:", partnerId);
+      return null;
+    }
+    
+    // Instagram-style read receipt logic:
+    // 1. Find all messages in chronological order
+    // 2. Find the last message from current user
+    // 3. Check if there are any messages after that from partner (if so, no read receipt needed)
+    // 4. Otherwise, check if partner read the last message from current user
+
+    // Sort messages by time sent (assuming IDs are sequential)
+    const sortedMessages = [...messages].sort((a, b) => a.id - b.id);
+    
+    // Find the last message from current user
+    let lastOwnMessageIndex = -1;
+    for (let i = sortedMessages.length - 1; i >= 0; i--) {
+      if (sortedMessages[i].isOwn) {
+        lastOwnMessageIndex = i;
+        break;
+      }
+    }
+    
+    // If no messages from current user or it's the very last message
+    if (lastOwnMessageIndex === -1) {
+      console.log("❌ No own messages to show read receipt for");
+      return null;
+    }
+    
+    const lastOwnMessage = sortedMessages[lastOwnMessageIndex];
+    
+    // Check if there are any partner messages after our last message
+    // (In Instagram, if partner has replied, read receipt isn't shown)
+    const hasNewerPartnerMessages = sortedMessages.some((msg, index) => 
+      index > lastOwnMessageIndex && !msg.isOwn
+    );
+    
+    if (hasNewerPartnerMessages) {
+      console.log("ℹ️ Partner has sent newer messages, not showing read receipt");
+      return null;
+    }
+    
+    // Initialize readByIds as empty array if undefined
+    const readByIds = lastOwnMessage.readByIds || [];
+    
+    // Log detailed debug information
+    console.log(`📝 Last own message ${lastOwnMessage.id}:`, {
+      text: lastOwnMessage.text,
+      readByIds,
+      partnerId: effectivePartnerId,
+      isRead: readByIds.includes(effectivePartnerId),
+      isLastMessage: lastOwnMessageIndex === sortedMessages.length - 1
+    });
+    
+    // Only show "seen" if the partner has read our last message
+    // and it's the last message in the conversation (Instagram style)
+    if (readByIds.includes(effectivePartnerId)) {
+      return (
+        <div className="flex items-center justify-end gap-1 px-4 mt-1">
+          <Avatar className="w-3.5 h-3.5">
+            <AvatarImage src={avatar || "/placeholder-user.jpg"} alt={username} />
+            <AvatarFallback className="text-[8px]">{username.slice(0, 1).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-muted-foreground">Seen</span>
+        </div>
+      );
+    } else {
+      console.log("❌ Last message not read by partner yet");
+      return null;
+    }
+  }, [messages, partnerId, detectedPartnerId, currentUserId, avatar, username]);
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900">
@@ -392,137 +665,47 @@ export function Chat({
               </Avatar>
             )}
             <div className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
-              <div
-                className={`px-4 py-2.5 rounded-3xl break-words ${
-                  msg.isOwn 
-                    ? "bg-blue-500 text-white" 
-                    : "bg-zinc-100 dark:bg-zinc-800 text-foreground"
-                }`}
-              >
-                {msg.text}
-              </div>
+              {msg.image && (
+                <Image 
+                  src={msg.image} 
+                  alt="chat-image" 
+                  className="rounded-2xl max-w-full h-auto mb-2"
+                  width={400}
+                  height={400}
+                />
+              )}
+              {msg.text && (
+                <div
+                  className={`px-4 py-2.5 rounded-3xl break-words ${
+                    msg.isOwn 
+                      ? "bg-blue-500 text-white" 
+                      : "bg-zinc-100 dark:bg-zinc-800 text-foreground"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              )}
+              {msg.file && (
+                <a 
+                  href={msg.file.url} 
+                  download
+                  className={`px-4 py-2.5 rounded-3xl flex items-center gap-2 ${
+                    msg.isOwn 
+                      ? "bg-blue-500 text-white" 
+                      : "bg-zinc-100 dark:bg-zinc-800 text-foreground"
+                  }`}
+                >
+                  <span>📎</span>
+                  {msg.file.name}
+                </a>
+              )}
             </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
 
         {/* ✓ Đã xem */}
-        {messages.length > 0 && (() => {
-          // Use partnerId from props or detected from messages
-          let effectivePartnerId = partnerId || detectedPartnerId || 0;
-          
-          // Try to determine partner ID from messages if it's not provided
-          if (!effectivePartnerId || effectivePartnerId === 0) {
-            console.log("⚠️ partnerId is missing or zero, trying to determine from messages...");
-            
-            // Find messages that aren't from the current user
-            const partnerMessages = messages.filter(m => !m.isOwn);
-            if (partnerMessages.length > 0) {
-              // First try: Check if any message from partner has a sender_id
-              for (const msg of partnerMessages) {
-                if (msg.sender_id && msg.sender_id !== currentUserId) {
-                  effectivePartnerId = msg.sender_id;
-                  console.log("✅ Found partner ID from message sender_id:", effectivePartnerId);
-                  break;
-                }
-              }
-              
-              // Second try: If we still don't have a valid partnerId, try with readByIds
-              if (!effectivePartnerId || effectivePartnerId === 0) {
-                const senderIds = new Set<number>();
-                
-                // Look through all messages to find sender IDs
-                messages.forEach(msg => {
-                  if (msg.readByIds && msg.readByIds.length) {
-                    msg.readByIds.forEach(id => {
-                      if (id !== currentUserId) {
-                        senderIds.add(id);
-                      }
-                    });
-                  }
-                });
-                
-                // If we found any sender IDs, use the first one
-                if (senderIds.size > 0) {
-                  effectivePartnerId = Array.from(senderIds)[0] as number;
-                  console.log("✅ Determined partner ID from readByIds:", effectivePartnerId);
-                }
-              }
-            }
-          }
-          
-          // Make sure partnerId is valid and not 0
-          if (!effectivePartnerId || effectivePartnerId === 0) {
-            console.log("❌ Read receipt not shown: partnerId is missing or zero:", partnerId);
-            return null;
-          }
-          
-          // Instagram-style read receipt logic:
-          // 1. Find all messages in chronological order
-          // 2. Find the last message from current user
-          // 3. Check if there are any messages after that from partner (if so, no read receipt needed)
-          // 4. Otherwise, check if partner read the last message from current user
-
-          // Sort messages by time sent (assuming IDs are sequential)
-          const sortedMessages = [...messages].sort((a, b) => a.id - b.id);
-          
-          // Find the last message from current user
-          let lastOwnMessageIndex = -1;
-          for (let i = sortedMessages.length - 1; i >= 0; i--) {
-            if (sortedMessages[i].isOwn) {
-              lastOwnMessageIndex = i;
-              break;
-            }
-          }
-          
-          // If no messages from current user or it's the very last message
-          if (lastOwnMessageIndex === -1) {
-            console.log("❌ No own messages to show read receipt for");
-            return null;
-          }
-          
-          const lastOwnMessage = sortedMessages[lastOwnMessageIndex];
-          
-          // Check if there are any partner messages after our last message
-          // (In Instagram, if partner has replied, read receipt isn't shown)
-          const hasNewerPartnerMessages = sortedMessages.some((msg, index) => 
-            index > lastOwnMessageIndex && !msg.isOwn
-          );
-          
-          if (hasNewerPartnerMessages) {
-            console.log("ℹ️ Partner has sent newer messages, not showing read receipt");
-            return null;
-          }
-          
-          // Initialize readByIds as empty array if undefined
-          const readByIds = lastOwnMessage.readByIds || [];
-          
-          // Log detailed debug information
-          console.log(`📝 Last own message ${lastOwnMessage.id}:`, {
-            text: lastOwnMessage.text,
-            readByIds,
-            partnerId: effectivePartnerId,
-            isRead: readByIds.includes(effectivePartnerId),
-            isLastMessage: lastOwnMessageIndex === sortedMessages.length - 1
-          });
-          
-          // Only show "seen" if the partner has read our last message
-          // and it's the last message in the conversation (Instagram style)
-          if (readByIds.includes(effectivePartnerId)) {
-            return (
-              <div className="flex items-center justify-end gap-1 px-4 mt-1">
-                <Avatar className="w-3.5 h-3.5">
-                  <AvatarImage src={avatar || "/placeholder-user.jpg"} alt={username} />
-                  <AvatarFallback className="text-[8px]">{username.slice(0, 1).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-muted-foreground">Seen</span>
-              </div>
-            );
-          } else {
-            console.log("❌ Last message not read by partner yet");
-            return null;
-          }
-        })()}
+        {readReceipt}
       </div>
 
       <div className="px-4 py-3 border-t flex items-center gap-2 flex-shrink-0">
@@ -551,9 +734,35 @@ export function Chat({
             </div>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="flex-shrink-0 h-9 w-9"
+          onClick={() => fileInputRef.current?.click()}
+        >
           <ImageIcon className="w-5 h-5" />
         </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageSelect}
+        />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="flex-shrink-0 h-9 w-9"
+          onClick={() => fileUploadRef.current?.click()}
+        >
+          <Paperclip className="w-5 h-5" />
+        </Button>
+        <input
+          ref={fileUploadRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
         <Input
           className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
           placeholder="Message..."
@@ -563,27 +772,84 @@ export function Chat({
             console.log("💬 Input focused, marking messages as read");
             sendMarkRead();
             
-            // Also mark as read in conversation store for instant UI update
-            const { markAsRead } = useConversationStore.getState();
-            markAsRead(chatId);
+            // Removed: markAsRead in conversation store - let WebSocket handle it
+            // const { markAsRead } = useConversationStore.getState();
+            // markAsRead(chatId);
           }}
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault()
-              handleSendMessage()
+              if (selectedImage) {
+                handleSendImageMessage()
+              } else if (selectedFile) {
+                handleSendFileMessage()
+              } else {
+                handleSendMessage()
+              }
             }
           }}
         />
         <Button
-          onClick={handleSendMessage}
-          disabled={!newMessage.trim() || !isConnected}
+          onClick={handleSend}
+          disabled={!isConnected || isUploading}
           variant="ghost"
           size="icon"
           className="flex-shrink-0 h-9 w-9"
         >
-          {newMessage.trim() ? <Send className="w-5 h-5 text-blue-500" /> : <Heart className="w-5 h-5" />}
+          {isUploading ? (
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          ) : newMessage.trim() || selectedImage || selectedFile ? (
+            <Send className="w-5 h-5 text-blue-500" />
+          ) : (
+            <Heart className="w-5 h-5" />
+          )}
         </Button>
       </div>
+
+      {/* Image Preview */}
+      {previewUrl && (
+        <div className="px-4 py-3 border-t bg-white dark:bg-zinc-900 flex items-center gap-2">
+          <div className="relative">
+            <Image src={previewUrl} alt="preview" className="w-16 h-16 rounded object-cover" width={64} height={64} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 hover:bg-red-600 text-white rounded-full"
+              onClick={() => {
+                setSelectedImage(null)
+                setPreviewUrl(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+            >
+              ×
+            </Button>
+          </div>
+          <div className="flex-1 text-sm text-muted-foreground truncate">
+            {selectedImage?.name}
+          </div>
+        </div>
+      )}
+
+      {/* File Preview */}
+      {selectedFile && (
+        <div className="px-4 py-3 border-t bg-white dark:bg-zinc-900 flex items-center gap-2">
+          <Paperclip className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <div className="flex-1 text-sm text-muted-foreground truncate">
+            {selectedFile.name}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-red-500 hover:text-red-600"
+            onClick={() => {
+              setSelectedFile(null)
+              if (fileUploadRef.current) fileUploadRef.current.value = ''
+            }}
+          >
+            ×
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

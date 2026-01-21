@@ -92,7 +92,7 @@ export const useConversationStore = create<ConversationStore>()(
       const conversationExists = state.conversations.some(c => c.id === id);
       
       if (!conversationExists) {
-        console.warn(`⚠️ Cannot mark conversation ${id} as read - not found in store`);
+        console.log(`ℹ️ Conversation ${id} not found in store, skipping mark as read`);
         return { conversations: state.conversations }; // No change
       }
       

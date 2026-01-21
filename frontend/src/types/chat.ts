@@ -2,7 +2,12 @@ export interface MessageType {
     id: number
     sender: string
     sender_id?: number  // Add sender_id field
-    text: string
+    text?: string
+    image?: string
+    file?: {
+      url: string
+      name: string
+    }
     time: string
     isOwn: boolean
     readByIds?: number[]

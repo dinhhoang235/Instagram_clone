@@ -225,6 +225,43 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
     }
   }, [timeRefresh, parseTimestamp]);
 
+  // Format last message preview. If backend returns "None" for file messages,
+  // show "file" instead so the list reads e.g. "You: file" instead of "You: None".
+  const getShortName = (convo?: MessageListType) => {
+    if (!convo) return 'Người dùng'
+    const name = convo.fullName || convo.username || 'Người dùng'
+    const parts = name.trim().split(/\s+/)
+    return parts.length ? parts[parts.length - 1] : name
+  }
+
+  const formatLastMessage = useCallback((msg: string, convo?: MessageListType) => {
+    // Keep frontend lightweight: backend already composes friendly previews for attachments.
+    // Only handle empty / "None" fallbacks here to avoid duplicate logic.
+    try {
+      if (!msg || msg.trim() === "") {
+        if (convo) return `${getShortName(convo)} sent a file`
+        return "sent a file"
+      }
+
+      if (/\bnone\b/i.test(msg)) {
+        // Preserve outgoing "You:" when present
+        if (/^You:\s*/i.test(msg)) return 'You: sent a file'
+        return `${getShortName(convo)} sent a file`
+      }
+
+      // Handle image placeholders
+      if (msg.toLowerCase().includes('[image]')) {
+        if (/^You:\s*/i.test(msg)) return 'You: sent an image'
+        return `${getShortName(convo)} sent an image`
+      }
+
+      return msg
+    } catch (err) {
+      console.error("Error formatting last message:", err)
+      return msg || ""
+    }
+  }, []);
+
   // Note: WebSocket connection is now handled globally by WebSocketProvider
   // This ensures real-time updates work everywhere, not just on the messages page
 
@@ -337,7 +374,7 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
                     className={`text-sm truncate flex-1 ${convo.unread_count > 0 ? "font-semibold text-foreground" : "text-muted-foreground"
                       }`}
                   >
-                    {convo.lastMessage}
+                    {formatLastMessage(convo.lastMessage, convo)}
                   </p>
                 </div>
               </div>

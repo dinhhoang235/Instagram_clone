@@ -3,6 +3,8 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from .models import Thread, Message
 from .serializers import ConversationSerializer, MessageSerializer, MinimalUserSerializer
 from .pagination import MessagePagination
@@ -201,5 +203,128 @@ class SendFirstMessageView(APIView):
             print(f"Error in SendFirstMessageView: {e}")
             return Response(
                 {"error": "Internal server error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class SendMessageWithFileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(csrf_exempt)
+    def post(self, request, thread_id):
+        try:
+            # Check if thread exists and user is participant
+            thread = Thread.objects.filter(id=thread_id, users=request.user).first()
+            if not thread:
+                return Response(
+                    {"error": "Thread not found or you don't have access"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Get text (optional), image and file (optional)
+            text = request.data.get('text', '')
+            image = request.FILES.get('image')
+            file = request.FILES.get('file')
+            
+            # At least one of text, image, or file must be present
+            if not text and not image and not file:
+                return Response(
+                    {"error": "Message must contain text, image, or file"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create message
+            message = Message.objects.create(
+                thread=thread,
+                sender=request.user,
+                text=text if text else None
+            )
+            
+            # Attach image if provided
+            if image:
+                message.image = image
+            
+            # Attach file if provided
+            if file:
+                message.file = file
+            
+            message.save()
+            
+            # Mark message as read by sender (same as text messages)
+            message.read_by.add(request.user)
+            
+            # Serialize and return
+            serializer = MessageSerializer(message, context={'request': request})
+            
+            # Broadcast via WebSocket
+            try:
+                channel_layer = get_channel_layer()
+
+                # Build absolute URLs for saved image/file (use message fields after save)
+                image_url = None
+                file_info = None
+                try:
+                    if message.image:
+                        image_url = request.build_absolute_uri(message.image.url)
+                except Exception:
+                    image_url = None
+
+                try:
+                    if message.file:
+                        file_info = {
+                            'url': request.build_absolute_uri(message.file.url),
+                            'name': message.file.name.split('/')[-1]
+                        }
+                except Exception:
+                    file_info = None
+
+                async_to_sync(channel_layer.group_send)(
+                    f"chat_{thread.id}",
+                    {
+                        "type": "chat_message",
+                        "message": text if text else ("[Image]" if image_url else (f"[File: {file_info['name']}]" if file_info else "")),
+                        "image": image_url,
+                        "file": file_info,
+                        "message_id": message.id,
+                        "sender": request.user.username,
+                        "sender_id": request.user.id,
+                        "timestamp": str(message.timestamp),
+                    }
+                )
+                # Also send a conversation list update to each participant so
+                # the conversations sidebar updates in real-time (matching ChatConsumer.receive behavior)
+                users = thread.users.all()
+                for u in users:
+                    try:
+                        unread_count = Message.objects.filter(thread=thread).exclude(sender=u).exclude(read_by=u).count()
+                        async_to_sync(channel_layer.group_send)(
+                            f"conversations_{u.id}",
+                            {
+                                "type": "chat_update",
+                                "chat_id": thread.id,
+                                "message": text if text else ("[Image]" if image_url else (f"[File: {file_info['name']}]" if file_info else "")),
+                                "image": image_url,
+                                "file": file_info,
+                                "sender": {
+                                    "username": request.user.username,
+                                    "avatar": getattr(getattr(request.user, 'profile', None), 'avatar', None).url if getattr(getattr(request.user, 'profile', None), 'avatar', None) else None,
+                                    "id": request.user.id
+                                },
+                                "timestamp": str(message.timestamp),
+                                "is_sender": u.id == request.user.id,
+                                "unread_count": unread_count
+                            }
+                        )
+                    except Exception as e:
+                        print(f"Failed to send conversation update to user {u.id}: {e}")
+            except Exception as e:
+                print(f"WebSocket error: {e}")
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error in SendMessageWithFileView: {e}")
+            return Response(
+                {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

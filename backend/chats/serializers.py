@@ -9,10 +9,12 @@ class MessageSerializer(serializers.ModelSerializer):
     time = serializers.SerializerMethodField()
     isOwn = serializers.SerializerMethodField()
     readByIds = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    file = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'sender_id', 'text', 'time', 'isOwn', 'readByIds']
+        fields = ['id', 'sender', 'sender_id', 'text', 'image', 'file', 'time', 'isOwn', 'readByIds']
 
     def get_sender(self, obj):
         return obj.sender.username
@@ -29,6 +31,19 @@ class MessageSerializer(serializers.ModelSerializer):
         read_by_ids = list(obj.read_by.values_list('id', flat=True))
         print(f"Message {obj.id} readByIds: {read_by_ids}")  # Add debug log
         return read_by_ids
+    
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
+    
+    def get_file(self, obj):
+        if obj.file:
+            return {
+                'url': obj.file.url,
+                'name': obj.file.name.split('/')[-1]
+            }
+        return None
 
     def get_time(self, obj):
         local_dt = timezone.localtime(obj.timestamp) 
@@ -61,6 +76,12 @@ class ConversationSerializer(serializers.ModelSerializer):
             return other_user.profile.full_name
         return other_user.username if other_user else "Unknown"
 
+    def get_short_name(self, obj):
+        """Return the last word of the other user's full name (or username)."""
+        full = self.get_fullName(obj) or "Người dùng"
+        parts = full.strip().split()
+        return parts[-1] if parts else full
+
     def get_avatar(self, obj):
         request = self.context.get('request')
         user = self.get_other_user(obj)
@@ -75,12 +96,29 @@ class ConversationSerializer(serializers.ModelSerializer):
         
         request = self.context.get('request')
         current_user = request.user if request else None
-        
-        # Add "You:" prefix if message is from current user
+        # If the last message contains an image or file, show a friendly preview
+        if getattr(last, 'image', None):
+            verb = 'sent an image'
+            if current_user and last.sender == current_user:
+                return f"You: {verb}"
+            return f"{self.get_short_name(obj)} {verb}"
+
+        if getattr(last, 'file', None):
+            verb = 'sent a file'
+            if current_user and last.sender == current_user:
+                return f"You: {verb}"
+            return f"{self.get_short_name(obj)} {verb}"
+
+        # Fallback to text if present
+        if last.text:
+            if current_user and last.sender == current_user:
+                return f"You: {last.text}"
+            return last.text
+
+        # Default fallback when no text/image/file
         if current_user and last.sender == current_user:
-            return f"You: {last.text}"
-        
-        return last.text
+            return "You: sent a file"
+        return f"{self.get_short_name(obj)} sent a file"
 
     def get_time(self, obj):
         last = obj.last_message()
