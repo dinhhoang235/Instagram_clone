@@ -266,7 +266,12 @@ export function MessageList({ onSelectChat, activeChat, onSelectUserForNewMessag
   // This ensures real-time updates work everywhere, not just on the messages page
 
   const convArray = Array.isArray(conversations) ? conversations : []
-  const filtered = convArray.filter((c) => c.username?.toLowerCase().includes(search.toLowerCase()))
+  const searchLower = search.toLowerCase().trim()
+  const filtered = convArray.filter((c) => {
+    const username = (c.username || "").toLowerCase()
+    const fullName = (c.fullName || "").toLowerCase()
+    return username.includes(searchLower) || fullName.includes(searchLower)
+  })
 
   return (
     <div className="w-full md:w-80 lg:w-96 border-r flex flex-col h-full bg-white dark:bg-zinc-900">
