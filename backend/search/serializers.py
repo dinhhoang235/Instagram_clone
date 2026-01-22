@@ -5,13 +5,14 @@ from users.models import Profile
 
 class RecentSearchUserSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
+    full_name = serializers.CharField(read_only=True)
     avatar = serializers.SerializerMethodField()
     is_verified = serializers.BooleanField()
     is_following = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ["id", "username", "avatar", "is_verified", "is_following"]
+        fields = ["id", "username", "full_name", "avatar", "is_verified", "is_following"]
 
     def get_avatar(self, obj):
         request = self.context.get('request')
@@ -27,7 +28,7 @@ class RecentSearchUserSerializer(serializers.ModelSerializer):
 class MinimalUserSerializer(serializers.Serializer):
     id = serializers.IntegerField(source="user.id")
     username = serializers.CharField(source="user.username")
-    full_name = serializers.CharField()
+    full_name = serializers.CharField(read_only=True)
     avatar = serializers.SerializerMethodField()
     
     class Meta:

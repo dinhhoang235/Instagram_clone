@@ -14,9 +14,12 @@ import { getPostsExplore } from "@/lib/services/posts"
 import { TagType } from "@/types/tag"
 import { getTrendingTags } from "@/lib/services/tags"
 import { getPopularPlaces } from "@/lib/services/posts"
+import { SearchIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 
 export default function ExplorePage() {
+    const router = useRouter()
     const [posts, setPosts] = useState<PostType[]>([])
     const [tags, setTags] = useState<TagType[]>([])
     const [places, setPlaces] = useState<{ location: string; postCount: number }[]>([])
@@ -53,7 +56,20 @@ export default function ExplorePage() {
             <div className="flex">
                 <Sidebar />
                 <main className="flex-1 lg:ml-64">
-                    <div className="max-w-6xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
+                    <div className="max-w-6xl mx-auto px-4 pt-4 pb-8 lg:pt-8 lg:pb-8">
+
+                        {/* Mobile-only search header: click to go to /explore/search */}
+                        <div className="mb-4 lg:hidden">
+                          <div className="flex items-center justify-between">
+                            <button
+                              className="flex items-center gap-3 px-3 py-2 rounded-full bg-muted w-full text-left"
+                              onClick={() => router.push('/explore/search')}
+                            >
+                              <SearchIcon className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">Search</span>
+                            </button>
+                          </div>
+                        </div>
 
 
                         <Tabs defaultValue="posts" className="w-full">

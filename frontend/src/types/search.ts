@@ -1,7 +1,7 @@
 export interface SearchUser {
   id: string
   username: string
-  name: string
+  full_name?: string
   avatar: string
   is_verified: boolean
   is_following: boolean
@@ -22,7 +22,7 @@ export interface SearchPlace {
 export interface RecentSearch {
   id: number
   username: string
-  name: string
+  full_name?: string
   avatar: string
 }
 

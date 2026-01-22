@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { Sidebar } from "@/components/sidebar"
 import { MessageList } from "@/components/message-list"
@@ -21,6 +22,10 @@ export default function MessagesPage() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
     const currentUserId = user?.id || 0
+
+    const pathname = usePathname()
+    const isMessagesPage = pathname === "/messages"
+    const sidebarMarginClass = isMessagesPage ? "lg:ml-20" : "lg:ml-64"
 
     // Redirect if not authenticated
     if (!isAuthenticated) {
@@ -83,15 +88,11 @@ export default function MessagesPage() {
             </div>
 
             {/* Main Chat Area */}
-            <main className={`flex-1 flex items-center justify-center ${
-                activeChat || selectedUser 
-                    ? 'lg:ml-64' // Only add margin on desktop
-                    : 'lg:ml-64 lg:p-4' // Add padding when no chat is active
-            }`}>
+            <main className={`flex-1 flex items-center justify-center transition-all duration-200 ease-in-out ${activeChat || selectedUser ? sidebarMarginClass : `${sidebarMarginClass} ${isMessagesPage ? '' : 'lg:p-4'}`}`}>
                 <div className={`w-full flex overflow-hidden bg-white dark:bg-zinc-900 ${
                     activeChat || selectedUser
                         ? 'h-screen' // Full screen on mobile when chat is active
-                        : 'h-screen lg:h-[calc(100vh-2rem)] lg:border lg:rounded-lg lg:shadow-sm'
+                        : `h-screen lg:h-[calc(100vh-2rem)] ${isMessagesPage ? '' : 'lg:border lg:rounded-lg lg:shadow-sm'}`
                 }`}>
                     {/* Left: List of conversations - hide on mobile when chat is active */}
                     <div className={`w-full lg:w-auto ${activeChat || selectedUser ? 'hidden lg:flex' : 'flex'}`}>

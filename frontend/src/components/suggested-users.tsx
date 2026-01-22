@@ -120,7 +120,7 @@ export function SuggestedUsers({ variant = "sidebar", limit }: SuggestedUsersPro
                                 </Link>
                                 {user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-current" />}
                             </div>
-                            <p className="text-sm text-muted-foreground">{user.name}</p>
+                            {user.full_name ? <p className="text-sm text-muted-foreground">{user.full_name}</p> : null}
                             <p className="text-xs text-muted-foreground">{user.reason}</p>
                         </div>
                     </CardHeader>

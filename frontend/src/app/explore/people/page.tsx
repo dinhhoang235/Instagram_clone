@@ -55,7 +55,7 @@ export default function ExplorePeoplePage() {
   const filteredUsers = suggestedUsers.filter(
     (user) =>
       user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      user.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   if (loading) {
@@ -110,7 +110,7 @@ export default function ExplorePeoplePage() {
                       </Link>
                       {user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-current flex-shrink-0" />}
                     </div>
-                    <p className="text-sm text-foreground">{user.name}</p>
+                    {user.full_name ? <p className="text-sm text-foreground">{user.full_name}</p> : null}
                     <p className="text-xs text-muted-foreground">{user.reason}</p>
                   </div>
 
