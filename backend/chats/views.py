@@ -355,3 +355,36 @@ class SendMessageWithFileView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class DeleteThreadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, thread_id):
+        try:
+            thread = Thread.objects.filter(id=thread_id, users=request.user).first()
+            if not thread:
+                return Response({"error": "Thread not found or you don't have access"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Collect user IDs for notifications before deletion
+            users = list(thread.users.all())
+            thread_id_val = thread.id
+            thread.delete()
+
+            # Notify each participant that the thread was removed
+            try:
+                channel_layer = get_channel_layer()
+                for u in users:
+                    async_to_sync(channel_layer.group_send)(
+                        f"conversations_{u.id}",
+                        {
+                            "type": "chat_removed",
+                            "chat_id": thread_id_val,
+                        }
+                    )
+            except Exception as e:
+                print(f"Failed to notify participants about deleted thread: {e}")
+
+            return Response({"status": "deleted", "thread_id": thread_id_val}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Error deleting thread {thread_id}: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

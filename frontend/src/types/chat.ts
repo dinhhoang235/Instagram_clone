@@ -61,3 +61,13 @@ export interface SendFirstMessageResponse {
     avatar: string
   }
 }
+
+// Response for deleting a thread. Backend may return different shapes; keep fields optional.
+export interface DeleteThreadResponse {
+  status?: string
+  thread_id?: number
+  detail?: string
+}
+
+// Send-file returns the created message; reuse MessageType
+export type SendFileMessageResponse = MessageType

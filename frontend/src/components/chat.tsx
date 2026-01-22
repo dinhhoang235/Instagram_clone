@@ -10,9 +10,9 @@ import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip
 import { Switch } from "@/components/ui/switch"
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
-import api from "@/lib/api"
+import { deleteThread, sendMessageWithFile } from "@/lib/services/chats"
 import { useConversationStore } from "@/stores/useConversationStore"
-import type { ChatProps, MessageType } from "@/types/chat"
+import type { ChatProps, MessageType, MessageListType } from "@/types/chat"
 
 const PAGE_SIZE = 20
 
@@ -137,6 +137,35 @@ export function Chat({
   const fileUploadRef = useRef<HTMLInputElement>(null)
   const [detectedPartnerId, setDetectedPartnerId] = useState<number | null>(null)
 
+  // Delete confirmation modal state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleCancelDelete = () => setShowDeleteConfirm(false)
+  const handleOpenDelete = () => setShowDeleteConfirm(true)
+
+  const handleConfirmDelete = async () => {
+    if (!chatId) return
+    setIsDeleting(true)
+    try {
+      // Try server-side delete via service helper (may 404 if backend doesn't implement deletion yet)
+      await deleteThread(chatId)
+    } catch (err) {
+      console.warn("Failed to delete thread on server:", err)
+    } finally {
+      // Remove from local conversation store so UI updates immediately
+      const { conversations, setConversations } = useConversationStore.getState()
+      try {
+        setConversations(conversations.filter((c: MessageListType) => c.id !== chatId))
+      } catch (e) {
+        console.warn('Failed to update conversation store after delete', e)
+      }
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+      if (onBack) onBack()
+    }
+  }
+
   const sendMarkRead = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       console.log("📤 Sending mark_read to server");
@@ -177,17 +206,9 @@ export function Chat({
       formData.append('image', selectedImage)
       formData.append('text', newMessage || '')
 
-      const response = await api.post(
-        `/chats/threads/${chatId}/send-file/`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      )
+      const response = await sendMessageWithFile(chatId, formData)
 
-      if (response.data) {
+      if (response) {
         // Removed: const newMsg = response.data and setMessages to prevent duplication
         setShouldScrollToBottom(true)
         setNewMessage('')
@@ -225,17 +246,9 @@ export function Chat({
       formData.append('file', selectedFile)
       formData.append('text', newMessage || '')
 
-      const response = await api.post(
-        `/chats/threads/${chatId}/send-file/`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      )
+      const response = await sendMessageWithFile(chatId, formData)
 
-      if (response.data) {
+      if (response) {
         // Removed: const newMsg = response.data and setMessages to prevent duplication
         setShouldScrollToBottom(true)
         setNewMessage('')
@@ -1030,7 +1043,13 @@ export function Chat({
               <div className="mt-4 space-y-3">
                 <button className="w-full text-left text-sm text-red-500">Report</button>
                 <button className="w-full text-left text-sm text-red-500">Block</button>
-                <button className="w-full text-left text-sm text-red-500">Delete chat</button>
+                <button
+                  className="w-full text-left text-sm text-red-500"
+                  onClick={handleOpenDelete}
+                  disabled={isDeleting}
+                >
+                  Delete chat
+                </button>
               </div>
             </div>
           </div>
@@ -1074,15 +1093,62 @@ export function Chat({
                 <div className="mt-4 space-y-3">
                   <button className="w-full text-left text-sm text-red-500">Report</button>
                   <button className="w-full text-left text-sm text-red-500">Block</button>
-                  <button className="w-full text-left text-sm text-red-500">Delete chat</button>
+                  <button
+                    className="w-full text-left text-sm text-red-500"
+                    onClick={handleOpenDelete}
+                    disabled={isDeleting}
+                  >
+                    Delete chat
+                  </button>
                 </div>
               </div>
             </div>
           </aside>
         </>
       )}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-[92%] max-w-lg bg-white dark:bg-zinc-900 rounded-2xl p-6 text-center text-foreground shadow-lg"
+          >
+            <h3 className="text-lg font-semibold mb-3">Delete chat from inbox?</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              This will remove the chat from your inbox and erase the chat history. To stop receiving new messages from this account, first block the account then delete the chat.
+            </p>
+
+            <div className="border-t border-zinc-200 dark:border-zinc-700 -mx-6" />
+
+            <div className="mt-4 space-y-2">
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  'Delete'
+                )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Image Viewer Modal */}
-      {viewerImage && (
+      {viewerImage && ( 
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
           onClick={(e) => {
