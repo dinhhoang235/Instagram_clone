@@ -11,11 +11,11 @@ import {
   MessageCircle,
   Heart,
   PlusSquare,
-  User,
   Menu,
   Instagram,
   LogOut,
 } from "lucide-react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import {
@@ -28,11 +28,14 @@ import {
 import { useConversationStore } from "@/stores/useConversationStore"
 import { useNotificationStore } from "@/stores/useNotificationStore"
 import { useWebSocket } from "@/components/message-provider"
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { getMyProfile } from "@/lib/services/profile"
 import SearchDrawer from "@/components/search-drawer"
 
-const getNavigation = (username: string) => [
+type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement> & { className?: string }>
+const renderIcon = (Icon?: IconComponent, props?: React.SVGProps<SVGSVGElement>) => Icon ? <Icon {...props} /> : null
+
+const getNavigation = (username: string, avatarUrl?: string) => [
   { name: "Home", href: "/", icon: Home },
   { name: "Search", href: "/search", icon: Search },
   { name: "Explore", href: "/explore", icon: Compass },
@@ -40,7 +43,7 @@ const getNavigation = (username: string) => [
   { name: "Messages", href: "/messages", icon: MessageCircle },
   { name: "Notifications", href: "/notifications", icon: Heart },
   { name: "Create", href: "/create", icon: PlusSquare },
-  { name: "Profile", href: `/${username}`, icon: User },
+  { name: "Profile", href: `/${username}`, avatarUrl },
 ]
 
 const mobileNavigation = [
@@ -58,18 +61,17 @@ export function Sidebar() {
   const [navigation, setNavigation] = useState(getNavigation(""))
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
-
   useEffect(() => {
     if (isAuthenticated) {
-      const fetchUsername = async () => {
+      const fetchProfile = async () => {
         try {
           const profile = await getMyProfile()
-          setNavigation(getNavigation(profile.username))
+          setNavigation(getNavigation(profile.username, profile.avatar))
         } catch (error) {
           console.error("Failed to fetch profile:", error)
         }
       }
-      fetchUsername()
+      fetchProfile()
     }
   }, [isAuthenticated])
 
@@ -160,17 +162,18 @@ export function Sidebar() {
         <nav className="flex-1 px-3 mt-8 space-y-1">
           {navigation.map((item) => {
             const isSearchItem = item.name === "Search"
+            const isProfileItem = item.name === "Profile"
             // While search drawer is open, don't mark other items as active
             const isActive = isSearchItem ? isSearchOpen : (!isSearchOpen && pathname === item.href)
             const showDot =
               (item.name === "Messages" && totalUnreadMessages > 0) ||
               (item.name === "Notifications" && unreadNotificationCount > 0)
-            
+
             // Enhanced dot styling for better visibility
             const dotClass = cn(
               "absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full",
               "bg-red-500 border border-background",
-              "animate-pulse" // Add subtle pulse animation for new messages
+              "animate-pulse"
             )
 
             if (isSearchItem) {
@@ -187,13 +190,49 @@ export function Sidebar() {
                     isSidebarCollapsed ? "justify-center" : ""
                   )}
                 >
-                  <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}>
-                    <item.icon className={cn("w-6 h-6", isActive ? "fill-current" : "")} />
+                  <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}> 
+                    <Search className={cn("w-6 h-6", isActive ? "fill-current" : "")}/>
                   </div>
-                  <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}>
+                  <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}> 
                     {item.name}
                   </span>
                 </button>
+              )
+            }
+
+            if (isProfileItem) {
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  title={item.name}
+                  onClick={() => { if (isSearchOpen) setIsSearchOpen(false) }}
+                  className={cn(
+                    "group flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors",
+                    isActive ? "bg-muted" : "",
+                    isSidebarCollapsed ? "justify-center" : ""
+                  )}
+                >
+                  <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}> 
+                    {item.avatarUrl ? (
+                      <Image
+                        src={item.avatarUrl}
+                        alt="Avatar"
+                        width={28}
+                        height={28}
+                        className={cn(
+                          "rounded-full object-cover border",
+                          isActive ? "border-2 border-primary" : "border-muted"
+                        )}
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-muted" />
+                    )}
+                  </div>
+                  <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}> 
+                    {item.name}
+                  </span>
+                </Link>
               )
             }
 
@@ -209,8 +248,8 @@ export function Sidebar() {
                   isSidebarCollapsed ? "justify-center" : ""
                 )}
               >
-                <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}>
-                <item.icon className={cn("w-6 h-6", isActive ? "fill-current" : "")} />
+                <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}> 
+                  {renderIcon(item.icon, { className: cn("w-6 h-6", isActive ? "fill-current" : "") })}
                   {showDot && (
                     <>
                       <span className={dotClass} />
@@ -229,12 +268,12 @@ export function Sidebar() {
                     </>
                   )}
                 </div>
-                <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}>
+                <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}> 
                   {item.name}
                 </span>
               </Link>
             )
-          })} 
+          })}
         </nav>
         
         {/* WebSocket Connection Status - show when disconnected or connecting */}
@@ -301,7 +340,7 @@ export function Sidebar() {
                   )}
                 >
                   <div className="relative">
-                    <item.icon className={cn("w-6 h-6", isActive ? "fill-current" : "")} />
+                    {renderIcon(item.icon, { className: cn("w-6 h-6", isActive ? "fill-current" : "") })}
                     {showDot && (
                       <>
                         {/* Show unread count badge */}
@@ -333,7 +372,7 @@ export function Sidebar() {
                 )}
               >
                 <div className="relative">
-                  <item.icon className={cn("w-6 h-6", isActive ? "fill-current" : "")} />
+                  {renderIcon(item.icon, { className: cn("w-6 h-6", isActive ? "fill-current" : "") })}
                   {showDot && (
                     <>
                       {/* Show unread count badge */}
@@ -365,7 +404,7 @@ export function Sidebar() {
               {navigation.filter(item => !mobileNavigation.find(m => m.name === item.name)).map((item) => (
                 <DropdownMenuItem key={item.name} asChild>
                   <Link href={item.href} onClick={() => { if (isSearchOpen) setIsSearchOpen(false) }} className="flex items-center cursor-pointer">
-                    <item.icon className="w-4 h-4 mr-2" />
+                    {renderIcon(item.icon, { className: "w-4 h-4 mr-2" })}
                     {item.name}
                   </Link>
                 </DropdownMenuItem>
