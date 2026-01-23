@@ -153,7 +153,7 @@ export default function SearchDrawer({ isOpen, onClose, sidebarIsCollapsed = fal
             <div className="space-y-2">
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
-                  <Link href={`/${user.username}`} key={user.id} className="flex items-center p-2 rounded-lg hover:bg-muted">
+                  <Link href={`/${user.username}`} key={user.id} onClick={() => addRecentSearch(user.id)} className="flex items-center p-2 rounded-lg hover:bg-muted">
                     <div className="flex items-center space-x-3">
                       <Avatar>
                         <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.username} />

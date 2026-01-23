@@ -1,5 +1,5 @@
 export interface SearchUser {
-  id: string
+  id: number
   username: string
   full_name?: string
   avatar: string

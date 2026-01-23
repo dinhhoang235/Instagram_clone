@@ -26,14 +26,6 @@ class SearchAllAPIView(APIView):
                 Q(full_name__icontains=query)
             ).select_related("user")[:10]
 
-            if request.user.is_authenticated:
-                for profile in profiles:
-                    SearchHistory.objects.update_or_create(
-                        user=request.user,
-                        searched_user=profile.user,
-                        defaults={"searched_at": timezone.now()}
-                    )
-
             user_results = RecentSearchUserSerializer(
                 profiles,  # ✅ Truyền Profile objects
                 many=True,

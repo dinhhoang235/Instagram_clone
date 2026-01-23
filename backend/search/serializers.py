@@ -4,6 +4,7 @@ from users.models import Profile
 
 
 class RecentSearchUserSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='user.id', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     full_name = serializers.CharField(read_only=True)
     avatar = serializers.SerializerMethodField()
