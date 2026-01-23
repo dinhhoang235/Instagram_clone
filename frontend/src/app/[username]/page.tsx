@@ -6,20 +6,17 @@ import { Sidebar } from "@/components/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import {
     Grid,
     Bookmark,
-    Tag,
     Settings,
     BadgeCheck,
     MoreHorizontal,
-    UserPlus,
-    UserMinus,
-    MessageCircle,
     Heart,
     MessageSquare,
     Users,
+    Camera,
+    UserRound,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -53,7 +50,6 @@ export default function ProfilePage() {
     const [followersModalOpen, setFollowersModalOpen] = useState(false)
     const [followingModalOpen, setFollowingModalOpen] = useState(false)
 
-    // Redirect nếu chưa đăng nhập
     useEffect(() => {
         if (!isAuthenticated) redirect("/login")
     }, [isAuthenticated])
@@ -112,7 +108,7 @@ export default function ProfilePage() {
                             </div>
                             <h1 className="text-2xl font-bold mb-2">User not found</h1>
                             <p className="text-muted-foreground mb-4">
-                                The user youre looking for doesnt exist or may have been removed.
+                                The user you&apos;re looking for doesn&apos;t exist or may have been removed.
                             </p>
                             <Button onClick={() => router.back()}>Go back</Button>
                         </div>
@@ -122,171 +118,168 @@ export default function ProfilePage() {
         )
     }
 
-    if (!user) return null // loading...
+    if (!user) return null
 
     return (
         <div className="min-h-screen bg-background">
             <div className="flex">
                 <Sidebar />
                 <main className="flex-1 lg:ml-64">
-                    <div className="max-w-4xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
-                        {/* Profile Header */}
-                        <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-8 mb-8">
-                            <Avatar className="w-32 h-32 md:w-40 md:h-40">
-                                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.username} />
-                                <AvatarFallback className="text-2xl">{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
+                    <div className="max-w-4xl mx-auto px-4 py-6 pt-16 pb-20 lg:pt-8 lg:pb-8">
+                        {/* Profile Header - Side by Side Layout */}
+                        <div className="flex items-start space-x-6 mb-6">
+                            {/* Avatar with Note Button */}
+                            <div className="relative flex-shrink-0">
+                                <Avatar className="w-20 h-20">
+                                    <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.username} />
+                                    <AvatarFallback className="text-xl">{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                            </div>
 
-                            <div className="flex-1 space-y-4 w-full">
-                                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                                    <div className="flex items-center space-x-2">
-                                        <h1 className="text-xl font-light">{user.username}</h1>
-                                        {user.is_verified && <BadgeCheck className="w-5 h-5 text-blue-500 fill-current" />}
-                                        {user.is_private && (
-                                            <Badge variant="secondary" className="text-xs">
-                                                Private
-                                            </Badge>
-                                        )}
-                                    </div>
-
-                                    <div className="flex space-x-2">
-                                        {isOwnProfile ? (
-                                            <>
-                                                <Link href="/account/edit">
-                                                    <Button variant="secondary" size="sm">
-                                                        Edit profile
-                                                    </Button>
-                                                </Link>
-                                                <Button variant="secondary" size="sm">
-                                                    View archive
-                                                </Button>
-                                                <Button variant="ghost" size="sm">
-                                                    <Settings className="w-4 h-4" />
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Button
-                                                    variant={isFollowing ? "outline" : "default"}
-                                                    size="sm"
-                                                    onClick={handleFollow}
-                                                    disabled={isLoading}
-                                                    className="min-w-[80px]"
-                                                >
-                                                    {isLoading ? (
-                                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                    ) : isFollowing ? (
-                                                        <>
-                                                            <UserMinus className="w-4 h-4 mr-1" />
-                                                            Following
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <UserPlus className="w-4 h-4 mr-1" />
-                                                            Follow
-                                                        </>
-                                                    )}
-                                                </Button>
-                                                <Button variant="secondary" size="sm">
-                                                    <MessageCircle className="w-4 h-4 mr-1" />
-                                                    Message
-                                                </Button>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm">
-                                                            <MoreHorizontal className="w-4 h-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem>Block</DropdownMenuItem>
-                                                        <DropdownMenuItem>Restrict</DropdownMenuItem>
-                                                        <DropdownMenuItem>Report</DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem>Copy profile URL</DropdownMenuItem>
-                                                        <DropdownMenuItem>Share this profile</DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </>
-                                        )}
-                                    </div>
+                            {/* User Info */}
+                            <div className="flex-1 min-w-0">
+                                {/* Username and Settings */}
+                                <div className="flex items-center space-x-2 mb-3">
+                                    <h1 className="text-xl font-normal">{user.username}</h1>
+                                    {user.is_verified && (
+                                        <BadgeCheck className="w-5 h-5 text-blue-500 fill-current flex-shrink-0" />
+                                    )}
+                                    <button className="ml-auto w-6 h-6 bg-muted rounded-full flex items-center justify-center hover:bg-muted/80">
+                                        <Settings className="w-4 h-4" />
+                                    </button>
                                 </div>
 
-                                <div className="flex space-x-8 text-sm">
+                                {/* Full Name */}
+                                {user.full_name && (
+                                    <h2 className="text-sm font-semibold mb-3">{user.full_name}</h2>
+                                )}
+
+                                {/* Stats */}
+                                <div className="flex items-center space-x-4 text-sm mb-3">
                                     <span>
-                                        <strong>{user.posts_count.toLocaleString()}</strong> posts
+                                        <strong className="font-semibold">{user.posts_count}</strong> posts
                                     </span>
                                     <button 
                                         onClick={() => setFollowersModalOpen(true)}
-                                        className="hover:opacity-80 transition-opacity cursor-pointer"
+                                        className="hover:opacity-80 transition-opacity"
                                     >
-                                        <strong>{formatNumber(followerCount)}</strong> followers
+                                        <strong className="font-semibold">{formatNumber(followerCount)}</strong> followers
                                     </button>
                                     <button 
                                         onClick={() => setFollowingModalOpen(true)}
-                                        className="hover:opacity-80 transition-opacity cursor-pointer"
+                                        className="hover:opacity-80 transition-opacity"
                                     >
-                                        <strong>{user.following_count.toLocaleString()}</strong> following
+                                        <strong className="font-semibold">{user.following_count}</strong> following
                                     </button>
                                 </div>
 
-                                <div className="space-y-1">
-                                    <h2 className="font-semibold">{user.full_name}</h2>
-                                    <p className="text-sm">{user.bio}</p>
-                                    {user.email && <p className="text-sm">📧 {user.email}</p>}
+                                {/* Bio */}
+                                {user.bio && (
+                                    <p className="text-sm mb-2">{user.bio}</p>
+                                )}
+
+                                {/* Social Links */}
+                                <div className="flex flex-col space-y-1 text-sm">
                                     {user.website && (
                                         <a
                                             href={`https://${user.website}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-sm text-blue-600 hover:underline"
+                                            className="flex items-center space-x-2 text-blue-500 hover:underline"
                                         >
-                                            {user.website}
+                                            <span>🔗</span>
+                                            <span>{user.full_name || user.username}</span>
                                         </a>
                                     )}
-                                    {!isOwnProfile && user.mutual_followers_count > 0 && (
-                                        <p className="text-sm text-muted-foreground">
-                                            Followed by {user.mutual_followers_count} people you follow
-                                        </p>
-                                    )}
-                                    <p className="text-xs text-muted-foreground">{user.join_date}</p>
                                 </div>
                             </div>
                         </div>
 
+                        {/* Action Buttons */}
+                        <div className="flex space-x-2 mb-6">
+                            {isOwnProfile ? (
+                                <>
+                                    <Button variant="secondary" className="flex-1" asChild>
+                                        <Link href="/account/edit">Edit profile</Link>
+                                    </Button>
+                                    <Button variant="secondary" className="flex-1">
+                                        View archive
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant={isFollowing ? "secondary" : "default"}
+                                        className="flex-1"
+                                        onClick={handleFollow}
+                                        disabled={isLoading}
+                                    >
+                                        {isLoading ? (
+                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : isFollowing ? (
+                                            "Following"
+                                        ) : (
+                                            "Follow"
+                                        )}
+                                    </Button>
+                                    <Button variant="secondary" className="flex-1">
+                                        Message
+                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="secondary" size="icon">
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem>Block</DropdownMenuItem>
+                                            <DropdownMenuItem>Restrict</DropdownMenuItem>
+                                            <DropdownMenuItem>Report</DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem>Copy profile URL</DropdownMenuItem>
+                                            <DropdownMenuItem>Share this profile</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </>
+                            )}
+                        </div>
+
                         {/* Highlights */}
-                        <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
-                            {["Travel", "Food", "Photography", "Behind the Scenes"].map((highlight) => (
-                                <div key={highlight} className="flex flex-col items-center space-y-1 min-w-0">
-                                    <div className="w-16 h-16 rounded-full bg-muted border-2 border-muted-foreground/20 flex items-center justify-center">
-                                        <span className="text-xs text-center">{highlight.slice(0, 3)}</span>
-                                    </div>
-                                    <span className="text-xs text-center max-w-[64px] truncate">{highlight}</span>
+                        <div className="flex space-x-4 mb-6 overflow-x-auto pb-2">
+                            <button className="flex flex-col items-center flex-shrink-0">
+                                <div className="w-16 h-16 rounded-full border-2 border-muted-foreground/20 flex items-center justify-center hover:border-muted-foreground/40 transition-colors bg-background">
+                                    <span className="text-3xl text-muted-foreground">+</span>
                                 </div>
-                            ))}
+                                <span className="text-xs mt-1">New</span>
+                            </button>
                         </div>
 
                         {/* Posts Tabs */}
                         <Tabs defaultValue="posts" className="w-full">
-                            <TabsList className="grid w-full grid-cols-3">
-                                <TabsTrigger value="posts" className="flex items-center space-x-1">
-                                    <Grid className="w-4 h-4" />
-                                    <span className="hidden sm:inline">POSTS</span>
+                            <TabsList className="grid w-full grid-cols-3 border-t border-border">
+                                <TabsTrigger 
+                                    value="posts" 
+                                    className="flex items-center justify-center space-x-2 data-[state=active]:border-t-2 data-[state=active]:border-foreground -mt-px"
+                                >
+                                    <Grid className="w-5 h-5" />
                                 </TabsTrigger>
-                                {isOwnProfile && (
-                                    <TabsTrigger value="saved" className="flex items-center space-x-1">
-                                        <Bookmark className="w-4 h-4" />
-                                        <span className="hidden sm:inline">SAVED</span>
-                                    </TabsTrigger>
-                                )}
-                                <TabsTrigger value="tagged" className="flex items-center space-x-1">
-                                    <Tag className="w-4 h-4" />
-                                    <span className="hidden sm:inline">TAGGED</span>
+                                <TabsTrigger 
+                                    value="saved" 
+                                    className="flex items-center justify-center space-x-2 data-[state=active]:border-t-2 data-[state=active]:border-foreground -mt-px"
+                                >
+                                    <Bookmark className="w-5 h-5" />
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="tagged" 
+                                    className="flex items-center justify-center space-x-2 data-[state=active]:border-t-2 data-[state=active]:border-foreground -mt-px"
+                                >
+                                    <UserRound className="w-5 h-5" />
                                 </TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="posts" className="mt-6">
+                            <TabsContent value="posts" className="mt-8">
                                 {posts.length > 0 ? (
-                                    <div className="grid grid-cols-3 gap-1 md:gap-4">
+                                    <div className="grid grid-cols-3 gap-1">
                                         {posts.map((post) => (
                                             <Link
                                                 href={`/post/${post.id}`}
@@ -314,35 +307,37 @@ export default function ProfilePage() {
                                     </div>
                                 ) : (
                                     <div className="text-center py-12">
-                                        <div className="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-muted-foreground flex items-center justify-center">
-                                            <Grid className="w-8 h-8 text-muted-foreground" />
+                                        <div className="w-16 h-16 mx-auto mb-6 rounded-full border-2 border-foreground flex items-center justify-center">
+                                            <Camera className="w-8 h-8" />
                                         </div>
-                                        <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
-                                        <p className="text-muted-foreground">
-                                            {isOwnProfile ? "Share your first photo or video" : "No posts to show"}
+                                        <h3 className="text-3xl font-bold mb-2">Share Photos</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            When you share photos, they will appear on your profile.
                                         </p>
                                     </div>
                                 )}
                             </TabsContent>
 
-                            {isOwnProfile && (
-                                <TabsContent value="saved" className="mt-6">
-                                    <div className="text-center py-12">
-                                        <Bookmark className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                                        <h3 className="text-lg font-semibold mb-2">Save posts you want to see again</h3>
-                                        <p className="text-muted-foreground">Only you can see what youre saved</p>
-                                    </div>
-                                </TabsContent>
-                            )}
-
-                            <TabsContent value="tagged" className="mt-6">
+                            <TabsContent value="saved" className="mt-8">
                                 <div className="text-center py-12">
-                                    <Tag className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                                    <h3 className="text-lg font-semibold mb-2">Photos of {isOwnProfile ? "you" : user.username}</h3>
-                                    <p className="text-muted-foreground">
-                                        {isOwnProfile
-                                            ? "When people tag you in photos, they'll appear here."
-                                            : "Photos this person has been tagged in will appear here."}
+                                    <div className="w-16 h-16 mx-auto mb-6 rounded-full border-2 border-foreground flex items-center justify-center">
+                                        <Bookmark className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-3xl font-bold mb-2">Save</h3>
+                                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                                        Save photos and videos that you want to see again. No one is notified, and only you can see what you&apos;ve saved.
+                                    </p>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="tagged" className="mt-8">
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 mx-auto mb-6 rounded-full border-2 border-foreground flex items-center justify-center">
+                                        <UserRound className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-3xl font-bold mb-2">Photos of you</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        When people tag you in photos, they&apos;ll appear here.
                                     </p>
                                 </div>
                             </TabsContent>
