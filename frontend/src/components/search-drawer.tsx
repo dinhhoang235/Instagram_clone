@@ -16,9 +16,10 @@ type Props = {
   isOpen: boolean
   onClose: () => void
   sidebarIsCollapsed?: boolean
+  sidebarIsHidden?: boolean
 } 
 
-export default function SearchDrawer({ isOpen, onClose, sidebarIsCollapsed = false }: Props) {
+export default function SearchDrawer({ isOpen, onClose, sidebarIsCollapsed = false, sidebarIsHidden = false }: Props) {
   const { isAuthenticated } = useAuth()
   const router = useRouter()
 
@@ -108,9 +109,10 @@ export default function SearchDrawer({ isOpen, onClose, sidebarIsCollapsed = fal
   const showResults = searchQuery.length > 0
 
   // Styling
-  const leftClass = sidebarIsCollapsed ? "lg:left-20" : "lg:left-64"
+  const leftClass = sidebarIsHidden ? "lg:left-0" : (sidebarIsCollapsed ? "lg:left-20" : "lg:left-64")
+  const widthClass = sidebarIsHidden ? "lg:w-[480px]" : "lg:w-[360px]"
 
-  const baseClass = `fixed top-0 bottom-0 z-50 ${leftClass} w-full lg:w-[360px] bg-background border-l overflow-auto transition-transform transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}`
+  const baseClass = `fixed top-0 bottom-0 z-50 ${leftClass} w-full ${widthClass} bg-background border-l overflow-auto transform transition-all duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`
 
   if (!isOpen) return null
 
@@ -118,7 +120,7 @@ export default function SearchDrawer({ isOpen, onClose, sidebarIsCollapsed = fal
 
   return (
     <div>
-      <div className={`fixed inset-0 z-40 bg-background/80 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'} ${leftClass}`} onClick={onClose} aria-hidden="true" />
+      <div className={`fixed inset-0 z-40 bg-background/80 transition-all duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'opacity-0'} ${leftClass}`} onClick={onClose} aria-hidden="true" />
       <div className={baseClass} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between px-4 py-4 ">
             <div className="flex items-center gap-2">

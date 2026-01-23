@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import {
   Home,
   Search,
@@ -31,6 +30,7 @@ import { useWebSocket } from "@/components/message-provider"
 import React, { useEffect, useState } from "react"
 import { getMyProfile } from "@/lib/services/profile"
 import SearchDrawer from "@/components/search-drawer"
+import NotificationsDrawer from "@/components/notifications-drawer"
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement> & { className?: string }>
 const renderIcon = (Icon?: IconComponent, props?: React.SVGProps<SVGSVGElement>) => Icon ? <Icon {...props} /> : null
@@ -60,6 +60,7 @@ export function Sidebar() {
   const { isConnected, isConnecting } = useWebSocket()
   const [navigation, setNavigation] = useState(getNavigation(""))
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -87,10 +88,13 @@ export function Sidebar() {
     ? conversations.reduce((sum, convo) => sum + (convo.unread_count || 0), 0)
     : (console.warn('conversations is not an array:', conversations), 0)
 
-  // Collapse sidebar to icons-only on /messages or when Search drawer is open
-  const isMessagesPage = pathname === "/messages"
-  const isSidebarCollapsed = isMessagesPage || isSearchOpen
-  const sidebarWidthClass = isSidebarCollapsed ? "lg:w-20" : "lg:w-64"
+  // Keep sidebar icon-only by default on desktop. Expand on hover unless the Search drawer is open.
+  const isCollapsedByDefault = true
+  // Allow hover expansion; only disable when search is open
+  const enableHoverExpand = !isSearchOpen
+  // Sidebar stays collapsed by default unless the user hovers (or search is open)
+  const isSidebarCollapsed = isSearchOpen || isCollapsedByDefault
+  const sidebarWidthClass = enableHoverExpand ? "lg:w-20 lg:hover:w-64" : "lg:w-20"
 
   // Effect to update browser title with unread count
   useEffect(() => {
@@ -153,18 +157,21 @@ export function Sidebar() {
       )}
 
       {/* Desktop Sidebar */}
-      <div className={cn("hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background overflow-hidden transition-all duration-200 ease-in-out", sidebarWidthClass)}>
+      <div className={cn("hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background overflow-hidden transition-all duration-200 ease-in-out group lg:z-50", sidebarWidthClass, isSearchOpen && "lg:hidden")}>
       <div className="flex flex-col flex-1 min-h-0 pt-5 pb-4">
-        <Link href="/" className={cn("flex items-center flex-shrink-0 hover:opacity-80 transition-opacity", isSidebarCollapsed ? "px-4 justify-center" : "px-6")}>
-          <Instagram className="w-8 h-8" />
-          <span className={cn("ml-2 text-xl font-bold overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100")}>Instagram</span>
+        <Link href="/" className={cn("flex items-center flex-shrink-0 hover:opacity-80 transition-all px-5")}>
+          <Instagram className="w-8 h-8 flex-shrink-0" />
+          <span className="ml-2 text-xl font-bold whitespace-nowrap transition-all duration-200 ease-in-out opacity-0 w-0 overflow-hidden group-hover:opacity-100 group-hover:w-auto">
+            Instagram
+          </span>
         </Link>
         <nav className="flex-1 px-3 mt-8 space-y-1">
           {navigation.map((item) => {
             const isSearchItem = item.name === "Search"
             const isProfileItem = item.name === "Profile"
-            // While search drawer is open, don't mark other items as active
-            const isActive = isSearchItem ? isSearchOpen : (!isSearchOpen && pathname === item.href)
+            const isNotificationsItem = item.name === "Notifications"
+            // While search/notifications drawer is open, don't mark other items as active
+            const isActive = isSearchItem ? isSearchOpen : isNotificationsItem ? isNotificationsOpen : ((!isSearchOpen && !isNotificationsOpen) && pathname === item.href)
             const showDot =
               (item.name === "Messages" && totalUnreadMessages > 0) ||
               (item.name === "Notifications" && unreadNotificationCount > 0)
@@ -183,17 +190,47 @@ export function Sidebar() {
                   onClick={() => setIsSearchOpen((v) => !v)}
                   aria-pressed={isSearchOpen}
                   aria-expanded={isSearchOpen}
-                  title={item.name}
+                  aria-label={item.name}
                   className={cn(
-                    "group flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors w-full text-left",
-                    isActive ? "bg-muted" : "",
-                    isSidebarCollapsed ? "justify-center" : ""
+                    "flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors w-full text-left",
+                    isActive ? "bg-muted" : ""
                   )}
                 >
-                  <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}> 
+                  <div className="relative flex-shrink-0 w-6 flex justify-center"> 
                     <Search className={cn("w-6 h-6", isActive ? "fill-current" : "")}/>
                   </div>
-                  <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}> 
+                  <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
+                    {item.name}
+                  </span>
+                </button>
+              )
+            }
+
+            if (isNotificationsItem) {
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => {
+                    if (isSearchOpen) setIsSearchOpen(false)
+                    setIsNotificationsOpen((v) => !v)
+                  }}
+                  aria-pressed={isNotificationsOpen}
+                  aria-expanded={isNotificationsOpen}
+                  aria-label={item.name}
+                  className={cn(
+                    "flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors w-full text-left",
+                    isActive ? "bg-muted" : ""
+                  )}
+                >
+                  <div className="relative flex-shrink-0 w-6 flex justify-center"> 
+                    <Heart className={cn("w-6 h-6", isActive ? "fill-current" : "")}/>
+                    {unreadNotificationCount > 0 && (
+                      <span className="absolute -top-2 -right-2 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border border-background">
+                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
                     {item.name}
                   </span>
                 </button>
@@ -205,15 +242,14 @@ export function Sidebar() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  title={item.name}
+                  aria-label={item.name}
                   onClick={() => { if (isSearchOpen) setIsSearchOpen(false) }}
                   className={cn(
-                    "group flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors",
-                    isActive ? "bg-muted" : "",
-                    isSidebarCollapsed ? "justify-center" : ""
+                    "flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors",
+                    isActive ? "bg-muted" : ""
                   )}
                 >
-                  <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}> 
+                  <div className="relative flex-shrink-0 w-7 flex justify-center"> 
                     {item.avatarUrl ? (
                       <Image
                         src={item.avatarUrl}
@@ -229,7 +265,7 @@ export function Sidebar() {
                       <div className="w-7 h-7 rounded-full bg-muted" />
                     )}
                   </div>
-                  <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}> 
+                  <span className="ml-3 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
                     {item.name}
                   </span>
                 </Link>
@@ -240,15 +276,14 @@ export function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
-                title={item.name}
+                aria-label={item.name}
                 onClick={() => { if (isSearchOpen) setIsSearchOpen(false) }}
                 className={cn(
-                  "group flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors",
-                  isActive ? "bg-muted" : "",
-                  isSidebarCollapsed ? "justify-center" : ""
+                  "flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors",
+                  isActive ? "bg-muted" : ""
                 )}
               >
-                <div className={cn("relative", isSidebarCollapsed ? "" : "mr-3")}> 
+                <div className="relative flex-shrink-0 w-6 flex justify-center"> 
                   {renderIcon(item.icon, { className: cn("w-6 h-6", isActive ? "fill-current" : "") })}
                   {showDot && (
                     <>
@@ -268,7 +303,7 @@ export function Sidebar() {
                     </>
                   )}
                 </div>
-                <span className={cn("ml-1 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}> 
+                <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
                   {item.name}
                 </span>
               </Link>
@@ -292,10 +327,14 @@ export function Sidebar() {
         <div className="flex-shrink-0 px-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className={cn("w-full px-3 py-3", isSidebarCollapsed ? "justify-center" : "justify-start")}>
-                <Menu className={cn("w-6 h-6", isSidebarCollapsed ? "" : "mr-3")} />
-                <span className={cn("ml-2 overflow-hidden transition-all duration-200 ease-in-out", isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100")}>More</span>
-              </Button>
+              <button className="flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors">
+                <div className="relative flex-shrink-0 w-6 flex justify-center">
+                  <Menu className="w-6 h-6" />
+                </div>
+                <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto">
+                  More
+                </span>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem>Settings</DropdownMenuItem>
@@ -315,7 +354,10 @@ export function Sidebar() {
       </div>
 
       {/* Search Drawer (opens beside sidebar) */}
-      <SearchDrawer isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} sidebarIsCollapsed={isSidebarCollapsed} />
+      <SearchDrawer isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} sidebarIsCollapsed={isSidebarCollapsed} sidebarIsHidden={isSidebarCollapsed} />
+
+      {/* Notifications Drawer (opens beside sidebar) */}
+      <NotificationsDrawer isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} sidebarIsCollapsed={isSidebarCollapsed} sidebarIsHidden={isSidebarCollapsed} />
 
       {/* Mobile Bottom Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
@@ -333,7 +375,7 @@ export function Sidebar() {
                 <button
                   key={item.name}
                   onClick={() => router.push('/explore')}
-                  title={item.name}
+                  aria-label={item.name}
                   className={cn(
                     "flex flex-col items-center justify-center flex-1 py-2 transition-colors",
                     isActive ? "text-foreground" : "text-muted-foreground"
