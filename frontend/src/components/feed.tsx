@@ -115,7 +115,7 @@ export function Feed() {
 
       {/* Sidebar with Suggestions */}
       <div className="hidden xl:block w-80">
-        <div className="sticky top-8 space-y-6">
+        <div className="relative space-y-6">
           {/* User Profile Card */}
           <div className="flex items-center space-x-3 p-4">
             {/* Avatar with gradient border */}
