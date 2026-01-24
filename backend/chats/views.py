@@ -305,13 +305,14 @@ class SendMessageWithFileView(APIView):
                 except Exception:
                     file_info = None
 
-                async_to_sync(channel_layer.group_send)(
+                    async_to_sync(channel_layer.group_send)(
                     f"chat_{thread.id}",
                     {
                         "type": "chat_message",
                         "message": text if text else ("[Image]" if image_url else (f"[File: {file_info['name']}]" if file_info else "")),
                         "image": image_url,
                         "file": file_info,
+                        "shared_post": None,
                         "message_id": message.id,
                         "sender": request.user.username,
                         "sender_id": request.user.id,
@@ -332,6 +333,7 @@ class SendMessageWithFileView(APIView):
                                 "message": text if text else ("[Image]" if image_url else (f"[File: {file_info['name']}]" if file_info else "")),
                                 "image": image_url,
                                 "file": file_info,
+                                "shared_post": None,
                                 "sender": {
                                     "username": request.user.username,
                                     "avatar": getattr(getattr(request.user, 'profile', None), 'avatar', None).url if getattr(getattr(request.user, 'profile', None), 'avatar', None) else None,
@@ -355,6 +357,93 @@ class SendMessageWithFileView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class SharePostView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, thread_id):
+        try:
+            post_id = request.data.get('post_id')
+            if not post_id:
+                return Response({'error': 'post_id is required'}, status=400)
+
+            # Check thread and permission
+            thread = Thread.objects.filter(id=thread_id, users=request.user).first()
+            if not thread:
+                return Response({'error': "Thread not found or you don't have access"}, status=404)
+
+            # Find post
+            try:
+                from posts.models import Post
+                post = Post.objects.get(id=post_id)
+            except Exception as e:
+                return Response({'error': 'Post not found'}, status=404)
+
+            message = Message.objects.create(thread=thread, sender=request.user, text=None, shared_post=post)
+            message.read_by.add(request.user)
+
+            serializer = MessageSerializer(message, context={'request': request})
+
+            # Broadcast via websocket
+            try:
+                channel_layer = get_channel_layer()
+                image_url = None
+                try:
+                    if post.image:
+                        image_url = request.build_absolute_uri(post.image.url)
+                except Exception:
+                    image_url = None
+
+                shared_payload = {
+                    'id': str(post.id),
+                    'image': image_url,
+                    'caption': post.caption,
+                    'username': post.user.username
+                }
+
+                async_to_sync(channel_layer.group_send)(
+                    f"chat_{thread.id}",
+                    {
+                        'type': 'chat_message',
+                        'message': f"Shared a post",
+                        'shared_post': shared_payload,
+                        'message_id': message.id,
+                        'sender': request.user.username,
+                        'sender_id': request.user.id,
+                        'timestamp': str(message.timestamp)
+                    }
+                )
+
+                users = thread.users.all()
+                for u in users:
+                    try:
+                        unread_count = Message.objects.filter(thread=thread).exclude(sender=u).exclude(read_by=u).count()
+                        async_to_sync(channel_layer.group_send)(
+                            f"conversations_{u.id}",
+                            {
+                                'type': 'chat_update',
+                                'chat_id': thread.id,
+                                'message': 'Shared a post',
+                                'shared_post': shared_payload,
+                                'sender': {
+                                    'username': request.user.username,
+                                    'avatar': getattr(getattr(request.user, 'profile', None), 'avatar', None).url if getattr(getattr(request.user, 'profile', None), 'avatar', None) else None,
+                                    'id': request.user.id
+                                },
+                                'timestamp': str(message.timestamp),
+                                'is_sender': u.id == request.user.id,
+                                'unread_count': unread_count
+                            }
+                        )
+                    except Exception as e:
+                        print(f"Failed to send conversation update to user {u.id}: {e}")
+            except Exception as e:
+                print(f"WebSocket error when sharing post: {e}")
+
+            return Response(serializer.data, status=201)
+        except Exception as e:
+            print(f"Error in SharePostView: {e}")
+            return Response({'error': 'Internal server error'}, status=500)
 
 class DeleteThreadView(APIView):
     permission_classes = [IsAuthenticated]

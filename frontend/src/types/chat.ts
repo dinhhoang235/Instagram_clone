@@ -8,6 +8,12 @@ export interface MessageType {
       url: string
       name: string
     }
+    shared_post?: {
+      id: string
+      image?: string | null
+      caption?: string | null
+      username?: string
+    }
     time: string
     isOwn: boolean
     readByIds?: number[]

@@ -25,7 +25,7 @@ export default function MessagesPage() {
 
     const pathname = usePathname()
     const isMessagesPage = pathname === "/messages"
-    const sidebarMarginClass = isMessagesPage ? "lg:ml-20" : "lg:ml-64"
+    const sidebarMarginClass = "lg:ml-20"
 
     // Redirect if not authenticated
     if (!isAuthenticated) {

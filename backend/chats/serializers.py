@@ -11,10 +11,11 @@ class MessageSerializer(serializers.ModelSerializer):
     readByIds = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     file = serializers.SerializerMethodField()
+    shared_post = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'sender_id', 'text', 'image', 'file', 'time', 'isOwn', 'readByIds']
+        fields = ['id', 'sender', 'sender_id', 'text', 'image', 'file', 'shared_post', 'time', 'isOwn', 'readByIds']
 
     def get_sender(self, obj):
         return obj.sender.username
@@ -48,6 +49,25 @@ class MessageSerializer(serializers.ModelSerializer):
     def get_time(self, obj):
         local_dt = timezone.localtime(obj.timestamp) 
         return local_dt.strftime("%-I:%M %p")
+
+    def get_shared_post(self, obj):
+        if not obj.shared_post:
+            return None
+        request = self.context.get('request')
+        post = obj.shared_post
+        image_url = None
+        try:
+            if post.image:
+                image_url = request.build_absolute_uri(post.image.url)
+        except Exception:
+            image_url = None
+
+        return {
+            'id': str(post.id),
+            'image': image_url,
+            'caption': post.caption,
+            'username': post.user.username,
+        }
 
 class ConversationSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
@@ -98,6 +118,13 @@ class ConversationSerializer(serializers.ModelSerializer):
         
         request = self.context.get('request')
         current_user = request.user if request else None
+        # If the last message is a shared post, show an attachment-like preview
+        if getattr(last, 'shared_post', None):
+            verb = 'sent an attachment.'
+            if current_user and last.sender == current_user:
+                return f"You {verb}"
+            return f"{self.get_short_name(obj)} {verb}"
+
         # If the last message contains an image or file, show a friendly preview
         if getattr(last, 'image', None):
             verb = 'sent a photo.'

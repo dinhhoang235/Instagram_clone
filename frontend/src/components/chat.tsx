@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip, X } from "lucide-react"
+import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
@@ -524,6 +525,21 @@ export function Chat({
     }
   }, [chatId, currentUserId, sendMarkRead])
 
+    // Listen for sharedPost events to append previews sent from other parts of the UI
+    useEffect(() => {
+      const handleSharedPost = (ev: Event) => {
+        const detail = (ev as CustomEvent).detail
+        if (!detail) return
+        const { threadId, message } = detail
+        if (threadId === chatId) {
+          setMessages((prev) => [...prev, { ...message } as MessageType])
+          setShouldScrollToBottom(true)
+        }
+      }
+
+      window.addEventListener('sharedPost', handleSharedPost)
+      return () => window.removeEventListener('sharedPost', handleSharedPost)
+    }, [chatId])
   const handleSendMessage = () => {
     const trimmed = newMessage.trim()
     if (!trimmed || !isConnected || !socketRef.current) return
@@ -807,7 +823,25 @@ export function Chat({
               </Avatar>
             )}
             <div className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
-              {msg.image && (
+              {msg.shared_post ? (
+                <div className={`mb-2 rounded-xl overflow-hidden border ${msg.isOwn ? 'border-blue-300' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                  <Link href={`/post/${msg.shared_post.id}`} className="flex items-start gap-3 p-3">
+                    <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                      {msg.shared_post.image ? (
+                        // Use next/image when possible
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={msg.shared_post.image} alt="post-thumbnail" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{msg.shared_post.username}</div>
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{msg.shared_post.caption}</div>
+                    </div>
+                  </Link>
+                </div>
+              ) : msg.image && (
                 <div className="relative mb-2">
                   <button
                     onClick={() => openViewer(msg.image as string)}

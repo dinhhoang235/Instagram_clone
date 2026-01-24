@@ -31,4 +31,14 @@ export async function sendMessageWithFile(threadId: number, formData: FormData):
     console.error(`Failed to send file message for thread ${threadId}:`, error)
     throw error
   }
-} 
+}
+
+export async function sharePost(threadId: number, postId: string) {
+  try {
+    const res = await api.post(`/chats/threads/${threadId}/share-post/`, { post_id: postId })
+    return res.data
+  } catch (error) {
+    console.error(`Failed to share post ${postId} to thread ${threadId}:`, error)
+    throw error
+  }
+}

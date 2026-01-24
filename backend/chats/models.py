@@ -17,6 +17,7 @@ class Message(models.Model):
     text = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='chat_images/', blank=True, null=True)
     file = models.FileField(upload_to='chat_files/', blank=True, null=True)
+    shared_post = models.ForeignKey('posts.Post', on_delete=models.CASCADE, null=True, blank=True)
     timestamp = models.DateTimeField(default=timezone.now)
     read_by = models.ManyToManyField(User, related_name='read_messages', blank=True)
     
