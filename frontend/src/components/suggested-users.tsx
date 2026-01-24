@@ -35,6 +35,9 @@ export function SuggestedUsers({ variant = "sidebar", limit }: SuggestedUsersPro
         .filter((user) => !dismissedUsers.has(user.id))
         .slice(0, limit || (variant === "sidebar" ? 5 : undefined))
 
+    // If there are no users to display, render nothing
+    if (displayUsers.length === 0) return null
+
     const handleToggleFollow = async (username: string) => {
         try {
             const res = await toggleFollowUser(username)

@@ -257,7 +257,7 @@ export default function PostPage() {
           <div className="flex max-w-[935px] w-full h-fit border border-gray-200 dark:border-gray-800 rounded-sm overflow-hidden">
             {/* Post Image */}
             <div
-              className="flex-[1.5] flex items-center justify-center bg-black overflow-hidden"
+              className="flex-[2] flex items-center justify-center bg-black overflow-hidden"
               onDoubleClick={handleDoubleClick}
             >
               <div className="relative w-full aspect-square flex items-center justify-center">
@@ -285,7 +285,7 @@ export default function PostPage() {
             </div>
 
             {/* Post Details Sidebar */}
-            <div className="w-[335px] bg-white dark:bg-black border-l flex flex-col overflow-hidden max-h-[600px]">
+            <div className="w-[380px] bg-white dark:bg-black border-l flex flex-col overflow-hidden max-h-[700px]">
               {/* Post Header */}
               <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
                 <div className="flex items-center space-x-3 flex-1">
@@ -391,7 +391,7 @@ export default function PostPage() {
                         handleAddComment()
                       }
                     }}
-                    className="flex-1 border-0 bg-transparent p-0 focus-visible:ring-0 text-sm"
+                    className="flex-1 border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
                   />
                   {comment && (
                     <Button
