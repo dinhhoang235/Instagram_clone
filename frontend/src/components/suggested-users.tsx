@@ -53,7 +53,7 @@ export function SuggestedUsers({ variant = "sidebar", limit }: SuggestedUsersPro
 
     if (variant === "sidebar") {
         return (
-            <div className="bg-background">
+            <div className="bg-background p-4">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-muted-foreground">Suggested for you</h3>
                     <Link href="/explore/people" className="text-xs font-semibold text-foreground hover:text-muted-foreground">

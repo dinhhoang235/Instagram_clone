@@ -32,7 +32,7 @@ export type UpdateProfileInput = Partial<Omit<ProfileType,'username' | 'email' |
 export type SuggestedUserType = {
   id: string
   username: string
-  name: string
+  full_name?: string
   avatar: string
   isVerified: boolean
   reason: string

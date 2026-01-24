@@ -264,10 +264,12 @@ class SuggestedUserSerializer(serializers.ModelSerializer):
     isVerified = serializers.BooleanField(source='is_verified')
     isFollowing = serializers.SerializerMethodField()
     reason = serializers.SerializerMethodField()
+    # Include profile full name (optional)
+    full_name = serializers.CharField(allow_null=True, required=False)
 
     class Meta:
         model = Profile
-        fields = ['id', 'username', 'avatar', 'isVerified', 'isFollowing', 'reason']
+        fields = ['id', 'username', 'avatar', 'isVerified', 'isFollowing', 'reason', 'full_name']
 
     def get_avatar(self, obj):
         request = self.context.get('request')
