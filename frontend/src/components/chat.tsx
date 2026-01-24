@@ -879,8 +879,10 @@ export function Chat({
             >
               <EmojiPicker 
                 onEmojiClick={handleEmojiClick}
-                width={320}
-                height={400}
+                width={325}
+                height={333}
+                previewConfig={{ showPreview: false }}
+                skinTonesDisabled={true}
               />
             </div>
           )}

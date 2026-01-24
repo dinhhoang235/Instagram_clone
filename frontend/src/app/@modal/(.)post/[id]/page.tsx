@@ -7,9 +7,14 @@ import { Modal } from "@/components/modal"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, ChevronLeft } from "lucide-react"
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, ChevronLeft, Smile } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import dynamic from "next/dynamic"
+import type { EmojiClickData } from "emoji-picker-react"
+
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
+
 import { getPostById, likePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
 import { createComment } from "@/lib/services/comments"
@@ -27,6 +32,46 @@ export default function PostModal() {
   const [likes, setLikes] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
+
+  // Emoji picker state
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false)
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (isEmojiOpen && emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node) && !commentInputRef.current?.contains(e.target as Node)) {
+        setIsEmojiOpen(false)
+      }
+    }
+    document.addEventListener("click", handleDocClick)
+    return () => document.removeEventListener("click", handleDocClick)
+  }, [isEmojiOpen])
+
+  const insertEmojiAtCursor = (emoji: string) => {
+    const input = commentInputRef.current
+    if (!input) {
+      setComment(prev => prev + emoji)
+      return
+    }
+    const start = input.selectionStart ?? input.value.length
+    const end = input.selectionEnd ?? input.value.length
+    const newVal = comment.slice(0, start) + emoji + comment.slice(end)
+    setComment(newVal)
+    setTimeout(() => {
+      input.focus()
+      const pos = start + emoji.length
+      input.setSelectionRange(pos, pos)
+    }, 0)
+  }
+
+  const onEmojiClick = (data: EmojiClickData) => {
+    insertEmojiAtCursor(data?.emoji ?? data?.unified ?? "")
+    setIsEmojiOpen(false)
+  }
+
+  const toggleEmojiPicker = () => {
+    setIsEmojiOpen(prev => !prev)
+  }
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -122,7 +167,16 @@ export default function PostModal() {
 
         {/* Add Comment Input - Mobile */}
         <div className="border-t p-4 flex-shrink-0">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="flex-shrink-0 h-9 w-9"
+              onClick={() => toggleEmojiPicker()}
+            >
+              <Smile className="w-5 h-5" />
+            </Button>
+
             <Input
               ref={commentInputRef}
               placeholder="Add a comment..."
@@ -146,6 +200,15 @@ export default function PostModal() {
                 Post
               </Button>
             )}
+
+            {isEmojiOpen && (
+              <div 
+                ref={emojiPickerRef}
+                className="absolute bottom-12 left-0 z-50"
+              >
+                <EmojiPicker onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+              </div>
+            )} 
           </div>
         </div>
       </div>
@@ -262,7 +325,16 @@ export default function PostModal() {
 
             {/* Input */}
             <div className="border-t p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 relative">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="flex-shrink-0 h-9 w-9"
+                  onClick={() => toggleEmojiPicker()}
+                >
+                  <Smile className="w-5 h-5" />
+                </Button>
+
                 <Input
                   ref={commentInputRef}
                   value={comment}
@@ -279,6 +351,12 @@ export default function PostModal() {
                 <Button onClick={handleAddComment} variant="ghost" className="text-blue-500 font-semibold">
                   Post
                 </Button>
+
+                {isEmojiOpen && (
+                  <div ref={emojiPickerRef} className="absolute bottom-12 left-0 z-50">
+                    <EmojiPicker onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
