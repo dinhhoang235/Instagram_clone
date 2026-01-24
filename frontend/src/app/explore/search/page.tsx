@@ -141,7 +141,7 @@ export default function ExploreSearchPage() {
                     <div>
                       {(data?.users || []).length > 0 && (
                         <div className="space-y-2">
-                          {(data.users || []).map((u: SearchUser) => (
+                          {(data?.users || []).map((u: SearchUser) => (
                             <Link key={u.id} href={`/${u.username}`} onClick={() => addRecentSearch(u.id)} className="flex items-center p-2 rounded hover:bg-muted">
                               <Image src={u.avatar || '/placeholder.svg'} alt={u.username} width={32} height={32} className="rounded-full mr-3" />
                               <div>
