@@ -78,7 +78,37 @@ class PostViewSet(viewsets.ModelViewSet):
             'likes': post.likes.count(),
             'is_liked': liked
         })
-        
+
+    @action(detail=True, methods=['POST'], permission_classes=[permissions.IsAuthenticated])
+    def save(self, request, pk=None):
+        """Toggle save/bookmark for the authenticated user"""
+        post = self.get_object()
+        profile = request.user.profile
+
+        if profile.saved_posts.filter(id=post.id).exists():
+            profile.saved_posts.remove(post)
+            saved = False
+        else:
+            profile.saved_posts.add(post)
+            saved = True
+
+        return Response({
+            'status': 'saved' if saved else 'unsaved',
+            'is_saved': saved
+        })
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def saved(self, request):
+        """Return posts saved by the current authenticated user"""
+        posts = request.user.profile.saved_posts.select_related('user', 'user__profile').prefetch_related('tags', 'likes').order_by('-posted')
+
+        page = self.paginate_queryset(posts)
+        if page is not None:
+            serializer = PostSerializer(page, many=True, context=self.get_serializer_context())
+            return self.get_paginated_response(serializer.data)
+
+        serializer = PostSerializer(posts, many=True, context=self.get_serializer_context())
+        return Response(serializer.data)
     @action(detail=False, methods=["get"], url_path="places/popular")
     def popular_places(self, request):
         places = (

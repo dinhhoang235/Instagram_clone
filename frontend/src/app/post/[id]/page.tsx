@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ChevronLeft, BadgeCheck } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { getPostById, likePost } from "@/lib/services/posts"
+import { getPostById, likePost, savePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
 import { createComment } from "@/lib/services/comments"
 import { renderCaptionWithTags } from "@/components/tag"
@@ -42,6 +42,7 @@ export default function PostPage() {
         setPost(data)
         setLikes(data.likes || 0)
         setIsLiked(data.is_liked || false)
+        setIsSaved(data.is_saved || false)
         console.log("Fetched post:", data)
       } catch (err) {
         console.error("Error fetching post", err)
@@ -118,6 +119,18 @@ export default function PostPage() {
   const handleDoubleClick = () => {
     if (!isLiked) {
       handleLike()
+    }
+  }
+
+  const handleSave = async () => {
+    const previous = isSaved
+    setIsSaved(!previous)
+
+    try {
+      await savePost(postId)
+    } catch (error) {
+      console.error('Failed to toggle save', error)
+      setIsSaved(previous)
     }
   }
 
@@ -283,7 +296,7 @@ export default function PostPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setIsSaved(!isSaved)}
+                    onClick={handleSave}
                     className="p-0 h-auto hover:bg-transparent"
                   >
                     <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current" : ""}`} />

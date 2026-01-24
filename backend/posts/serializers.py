@@ -37,13 +37,20 @@ class PostSerializer(serializers.ModelSerializer):
     hashtags = serializers.SerializerMethodField()
     image = serializers.ImageField()
     is_liked = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
             'id', 'user', 'image', 'caption', 'hashtags',
-            'likes', 'is_liked', 'comments', 'timeAgo', 'location'
+            'likes', 'is_liked', 'is_saved', 'comments', 'timeAgo', 'location'
         ]
+
+    def get_is_saved(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return request.user.profile.saved_posts.filter(id=obj.id).exists()
+        return False
 
     def get_hashtags(self, obj):
         return [tag.name for tag in obj.tags.all()]

@@ -10,6 +10,7 @@ export interface PostType {
   hashtags?: string[]
   likes: number
   is_liked: boolean
+  is_saved?: boolean
   comments: number
   timeAgo: string
   location?: string

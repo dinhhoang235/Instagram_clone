@@ -32,6 +32,7 @@ import {
 import { ProfileType } from "@/types/profile"
 import { getUserProfile, toggleFollowUser } from "@/lib/services/profile"
 import { getPostsByUsername } from "@/lib/services/posts"
+import { getSavedPosts } from "@/lib/services/savedPosts"
 import { PostType } from "@/types/post"
 import { FollowersFollowingModal } from "@/components/followers-following-modal"
 
@@ -47,6 +48,8 @@ export default function ProfilePage() {
     const [followerCount, setFollowerCount] = useState(0)
     const [isLoading, setIsLoading] = useState(false)
     const [posts, setPosts] = useState<PostType[]>([])
+    const [savedPosts, setSavedPosts] = useState<PostType[]>([])
+    const [isLoadingSaved, setIsLoadingSaved] = useState(false)
     const [followersModalOpen, setFollowersModalOpen] = useState(false)
     const [followingModalOpen, setFollowingModalOpen] = useState(false)
 
@@ -74,7 +77,25 @@ export default function ProfilePage() {
         }
     }, [username])
 
-    const isOwnProfile = user?.is_self
+    useEffect(() => {
+        // If this is the profile of the logged-in user, fetch saved posts
+        if (!user) return
+        if (!user.is_self) return
+
+        const fetchSaved = async () => {
+            setIsLoadingSaved(true)
+            try {
+                const saved = await getSavedPosts()
+                setSavedPosts(saved)
+            } catch (err) {
+                console.error("Failed to fetch saved posts", err)
+            } finally {
+                setIsLoadingSaved(false)
+            }
+        }
+
+        fetchSaved()
+    }, [user])
 
     const handleFollow = async () => {
         setIsLoading(true)
@@ -88,6 +109,8 @@ export default function ProfilePage() {
             setIsLoading(false)
         }
     }
+
+    const isOwnProfile = user?.is_self
 
     const formatNumber = (num: number) =>
         num >= 1_000_000
@@ -319,15 +342,58 @@ export default function ProfilePage() {
                             </TabsContent>
 
                             <TabsContent value="saved" className="mt-8">
-                                <div className="text-center py-12">
-                                    <div className="w-20 h-20 mx-auto mb-6 rounded-full border-2 border-foreground flex items-center justify-center">
-                                        <Camera className="w-10 h-10" />
+                                {isOwnProfile ? (
+                                    isLoadingSaved ? (
+                                        <div className="text-center py-12">Loading...</div>
+                                    ) : savedPosts.length > 0 ? (
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {savedPosts.map((post) => (
+                                                <Link
+                                                    href={`/post/${post.id}`}
+                                                    key={post.id}
+                                                    className="relative aspect-square group cursor-pointer"
+                                                >
+                                                    <Image
+                                                        src={post.image || "/placeholder.svg"}
+                                                        alt={`Post ${post.id}`}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4 text-white">
+                                                        <div className="flex items-center space-x-1">
+                                                            <Heart className="w-6 h-6 fill-white" />
+                                                            <span className="font-semibold">{formatNumber(post.likes)}</span>
+                                                        </div>
+                                                        <div className="flex items-center space-x-1">
+                                                            <MessageSquare className="w-6 h-6 fill-white" />
+                                                            <span className="font-semibold">{post.comments}</span>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12">
+                                            <div className="w-20 h-20 mx-auto mb-6 rounded-full border-2 border-foreground flex items-center justify-center">
+                                                <Camera className="w-10 h-10" />
+                                            </div>
+                                            <h3 className="text-4xl font-bold mb-2">Share Photos</h3>
+                                            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                                                Save photos and videos that you want to see again. No one is notified, and only you can see what you&apos;ve saved.
+                                            </p>
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <div className="w-20 h-20 mx-auto mb-6 rounded-full border-2 border-foreground flex items-center justify-center">
+                                            <Camera className="w-10 h-10" />
+                                        </div>
+                                        <h3 className="text-4xl font-bold mb-2">Share Photos</h3>
+                                        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                                            Save photos and videos that you want to see again. No one is notified, and only you can see what you&apos;ve saved.
+                                        </p>
                                     </div>
-                                    <h3 className="text-4xl font-bold mb-2">Share Photos</h3>
-                                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                                        Save photos and videos that you want to see again. No one is notified, and only you can see what you&apos;ve saved.
-                                    </p>
-                                </div>
+                                )}
                             </TabsContent>
 
                             <TabsContent value="tagged" className="mt-8">

@@ -38,6 +38,12 @@ export const likePost = async (id: string): Promise<{ message: string }> => {
   return res.data
 }
 
+// Save/unsave (bookmark) a post
+export const savePost = async (id: string): Promise<{ status: string; is_saved: boolean }> => {
+  const res = await api.post<{ status: string; is_saved: boolean }>(`/posts/${id}/save/`)
+  return res.data
+}
+
 // create a new post
 export const createPost = async (formData: FormData) => {
   const res = await api.post("/posts/", formData)

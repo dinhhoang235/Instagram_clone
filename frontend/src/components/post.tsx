@@ -19,7 +19,7 @@ interface PostProps {
 
 export function Post({ post }: PostProps) {
   const [isLiked, setIsLiked] = useState(post.is_liked)
-  const [isSaved, setIsSaved] = useState(false)
+  const [isSaved, setIsSaved] = useState(post.is_saved || false)
   const [likes, setLikes] = useState(post.likes)
   const [comments, setComments] = useState(post.comments)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -89,6 +89,23 @@ export function Post({ post }: PostProps) {
     
     if (!isLiked) {
       handleLike()
+    }
+  }
+
+  const handleSave = async () => {
+    const previous = isSaved
+
+    // optimistic update
+    setIsSaved(!previous)
+
+    try {
+      // lazy-load to avoid circular import at top-level
+      const { savePost } = await import('@/lib/services/posts')
+      await savePost(post.id)
+    } catch (error) {
+      console.error('Failed to toggle save', error)
+      // rollback
+      setIsSaved(previous)
     }
   }
 
@@ -181,7 +198,7 @@ export function Post({ post }: PostProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsSaved(!isSaved)}
+            onClick={handleSave}
             className="p-0 h-auto hover:scale-110 transition-transform"
           >
             <Bookmark
@@ -189,6 +206,9 @@ export function Post({ post }: PostProps) {
                 }`}
             />
           </Button>
+
+          {/* Save handler */}
+          
         </div>
 
         {/* Caption + Hashtags gộp */}

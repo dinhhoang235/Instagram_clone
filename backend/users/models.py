@@ -40,6 +40,9 @@ class Profile(models.Model):
     # When the user was last seen offline (updated when all WebSocket connections disconnect)
     last_seen = models.DateTimeField(null=True, blank=True, help_text="Last time the user was seen online")
 
+    # Saved posts (bookmarks)
+    saved_posts = models.ManyToManyField('posts.Post', related_name='saved_by', blank=True)
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.avatar and os.path.exists(self.avatar.path):
