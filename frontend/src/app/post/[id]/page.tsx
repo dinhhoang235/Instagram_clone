@@ -20,6 +20,9 @@ import { getPostById, likePost, savePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
 import { createComment } from "@/lib/services/comments"
 import { renderCaptionWithTags } from "@/components/tag"
+import ShareDialog from "@/components/share-dialog"
+import { sharePostWithUser } from "@/lib/services/share"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function PostPage() {
   const { isAuthenticated } = useAuth()
@@ -34,6 +37,8 @@ export default function PostPage() {
   const [likes, setLikes] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
+  const [isShareOpen, setIsShareOpen] = useState(false)
+  const { toast } = useToast()
 
   // Emoji picker state
   const [isEmojiOpen, setIsEmojiOpen] = useState(false)
@@ -351,8 +356,8 @@ export default function PostPage() {
                     >
                       <MessageCircle className="w-6 h-6" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
-                      <Send className="w-6 h-6" />
+                    <Button variant="ghost" size="sm" className="p-0 h-auto hover:scale-110 transition-transform" onClick={() => setIsShareOpen(true)}>
+                      <Send className="w-7 h-7 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
                     </Button>
                   </div>
                   <Button
@@ -418,6 +423,22 @@ export default function PostPage() {
           </div>
         </main>
       </div>
+
+      <ShareDialog
+        open={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        urlToShare={`${window.location.origin}/post/${post.id}`}
+        onSelectUser={async (user) => {
+          try {
+            await sharePostWithUser({ post, user })
+            toast({ title: 'Sent', description: `Sent post to ${user.username}` })
+          } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : String(error)
+            console.error('Failed to send post link:', errMsg)
+            toast({ title: 'Error', description: errMsg || 'Failed to send message', variant: 'destructive' })
+          }
+        }}
+      />
 
       <style jsx>{`
         @keyframes heartPop {

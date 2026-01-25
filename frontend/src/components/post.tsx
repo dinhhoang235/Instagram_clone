@@ -13,7 +13,7 @@ import { PostType } from "@/types/post"
 import { likePost } from "@/lib/services/posts"
 import { renderCaptionWithTags } from "@/components/tag"
 import ShareDialog from "@/components/share-dialog"
-import { sendFirstMessage } from "@/lib/services/messages"
+import { sharePostWithUser } from "@/lib/services/share"
 import { useToast } from "@/components/ui/use-toast"
 
 interface PostProps {
@@ -64,8 +64,8 @@ export function Post({ post }: PostProps) {
   }
 
   const handleCommentClick = () => {
-    // Navigate to post detail page for better comment experience
-    router.push(`/post/${post.id}`)
+    // Navigate to post detail page and open comments immediately on mobile
+    router.push(`/post/${post.id}?comments=1`)
   }
 
   const handleLike = async () => {
@@ -248,84 +248,10 @@ export function Post({ post }: PostProps) {
         urlToShare={`${window.location.origin}/post/${post.id}`}
         onSelectUser={async (user) => {
           try {
-            const url = `${window.location.origin}/post/${post.id}`
-
-            // Create or get thread WITHOUT sending a text link
-            let threadId: number | null = null
-            try {
-              const { createConversation } = await import('@/lib/services/messages')
-              const conv = await createConversation(user.id)
-              threadId = conv.thread_id
-            } catch (err) {
-              // Fallback: if createConversation not available, use sendFirstMessage (legacy)
-              console.warn('createConversation failed, falling back to sendFirstMessage:', err)
-              try {
-                const res = await sendFirstMessage(user.id, `Check out this post: ${url}`)
-                threadId = res.thread_id
-              } catch (err2) {
-                console.error('Failed to create or start conversation:', err2)
-                toast({ title: 'Error', description: 'Could not create conversation', variant: 'destructive' })
-                return
-              }
-            }
-
-            if (!threadId) {
-              toast({ title: 'Error', description: 'Could not determine thread id', variant: 'destructive' })
-              return
-            }
-
-            // Share the post into the thread so recipient sees preview
-            console.log('Share: threadId=', threadId, 'postId=', post.id)
-            const { sharePost } = await import('@/lib/services/chats')
-            try {
-              await sharePost(threadId, String(post.id))
-            } catch (error: unknown) {
-              let errMsg = 'Failed to share post'
-              try {
-                if (typeof error === 'object' && error !== null && 'response' in error) {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const resp = (error as any).response?.data
-                  errMsg = resp?.error || JSON.stringify(resp) || errMsg
-                } else {
-                  errMsg = String(error)
-                }
-              } catch {
-                // ignore parsing errors
-              }
-              console.error('SharePost API failed:', errMsg)
-              toast({ title: 'Error', description: errMsg || 'Failed to share post', variant: 'destructive' })
-              return
-            }
-
-            // Dispatch local event for immediate preview in the current open chat (preview-only, no link bubble)
-            const message = {
-              id: Date.now(),
-              shared_post: {
-                id: post.id,
-                image: post.image || null,
-                caption: post.caption || null,
-                username: post.user.username
-              },
-              time: new Date().toISOString(),
-              isOwn: true
-            }
-
-            window.dispatchEvent(new CustomEvent('sharedPost', { detail: { threadId, message } }))
-
-            toast({ title: "Sent", description: `Sent post to ${user.username}` })
+            await sharePostWithUser({ post, user })
+            toast({ title: 'Sent', description: `Sent post to ${user.username}` })
           } catch (error: unknown) {
-            let errMsg = 'Failed to send message'
-            try {
-              if (typeof error === 'object' && error !== null && 'response' in error) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const resp = (error as any).response?.data
-                errMsg = resp?.error || JSON.stringify(resp) || errMsg
-              } else {
-                errMsg = String(error)
-              }
-            } catch {
-              // ignore
-            }
+            const errMsg = error instanceof Error ? error.message : String(error)
             console.error('Failed to send post link:', errMsg)
             toast({ title: 'Error', description: errMsg || 'Failed to send message', variant: 'destructive' })
           }
