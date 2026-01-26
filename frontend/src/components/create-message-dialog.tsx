@@ -70,7 +70,7 @@ export function CreateMessageDialog({ open, onClose, onSelectUser }: CreateMessa
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 flex flex-col max-h-[80vh] sm:max-h-[60vh]">
+      <DialogContent className="w-screen h-screen max-h-screen p-0 gap-0 flex flex-col rounded-none sm:rounded-lg sm:max-w-md sm:h-auto sm:max-h-[60vh] sm:mx-auto">
         {/* Visually hidden title for accessibility */}
         <VisuallyHidden.Root asChild>
           <DialogTitle>New message</DialogTitle>

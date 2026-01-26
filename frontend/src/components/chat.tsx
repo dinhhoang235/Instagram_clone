@@ -824,8 +824,8 @@ export function Chat({
             )}
             <div className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
               {msg.shared_post ? (
-                <div className={`mb-2 rounded-xl overflow-hidden border ${msg.isOwn ? 'border-blue-300' : 'border-zinc-200 dark:border-zinc-800'}`}>
-                  <Link href={`/post/${msg.shared_post.id}`} className="flex items-start gap-3 p-3">
+                <div className={`mb-2 rounded-xl overflow-hidden border ${msg.isOwn ? 'border-blue-300' : 'border-zinc-200 dark:border-zinc-800'} max-w-[360px] w-full`}>
+                  <Link href={`/post/${msg.shared_post.id}`} className="flex items-start gap-3 p-3 w-full">
                     <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                       {msg.shared_post.image ? (
                         // Use next/image when possible
@@ -835,9 +835,9 @@ export function Chat({
                         <div className="w-full h-full bg-gray-200" />
                       )}
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium">{msg.shared_post.username}</div>
-                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{msg.shared_post.caption}</div>
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2 ">{msg.shared_post.caption}</div>
                     </div>
                   </Link>
                 </div>

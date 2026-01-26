@@ -1,10 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Check, X } from "lucide-react"
-import { getNotifications, markAllNotificationsAsRead } from "@/lib/services/notifications"
+import { X, Heart } from "lucide-react"
+import { getNotifications } from "@/lib/services/notifications"
 import { useNotificationStore } from "@/stores/useNotificationStore"
 import { NotificationItem } from "@/components/notification-item"
 
@@ -16,7 +14,7 @@ type Props = {
 }
 
 export default function NotificationsDrawer({ isOpen, onClose, sidebarIsCollapsed = false, sidebarIsHidden = false }: Props) {
-  const { notifications, unreadCount, setNotifications, markAllAsRead } = useNotificationStore()
+  const { notifications, unreadCount, setNotifications } = useNotificationStore()
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -59,15 +57,7 @@ export default function NotificationsDrawer({ isOpen, onClose, sidebarIsCollapse
   const widthClass = sidebarIsHidden ? "lg:w-[480px]" : "lg:w-[360px]"
   const baseClass = `fixed top-0 bottom-0 z-50 ${leftClass} w-full ${widthClass} bg-background border-l overflow-auto transform transition-all duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllNotificationsAsRead()
-      markAllAsRead()
-      console.log("✅ All notifications marked as read")
-    } catch (error) {
-      console.error("Failed to mark all notifications as read:", error)
-    }
-  }
+
 
   return (
     <div>
@@ -84,12 +74,6 @@ export default function NotificationsDrawer({ isOpen, onClose, sidebarIsCollapse
           </div>
 
           <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} className="flex items-center space-x-1">
-                <Check className="w-4 h-4" />
-                <span>Mark all as read</span>
-              </Button>
-            )}
             <button onClick={onClose} aria-label="Close" className="p-1">
               <X className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -100,39 +84,21 @@ export default function NotificationsDrawer({ isOpen, onClose, sidebarIsCollapse
           {loading ? (
             <p className="text-center text-muted-foreground">Loading...</p>
           ) : (
-            <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="follows">Follows</TabsTrigger>
-                <TabsTrigger value="mentions">Mentions</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="all" className="space-y-4">
-                {notifications.length > 0 ? (
-                  notifications.map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">No notifications yet</div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="follows" className="space-y-4">
-                {notifications
-                  .filter((notification) => notification.type === "follow")
-                  .map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))}
-              </TabsContent>
-
-              <TabsContent value="mentions" className="space-y-4">
-                {notifications
-                  .filter((notification) => notification.type === "mention")
-                  .map((notification) => (
-                    <NotificationItem key={notification.id} notification={notification} />
-                  ))}
-              </TabsContent>
-            </Tabs>
+            <>
+              {notifications.length > 0 ? (
+                notifications.map((notification) => (
+                  <NotificationItem key={notification.id} notification={notification} />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                  <div className="rounded-full border border-muted-foreground/10 p-4 mb-4 h-20 w-20 flex items-center justify-center">
+                    <Heart className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-foreground mb-2">Activity On Your Posts</h2>
+                  <p className="max-w-[56ch] text-sm text-muted-foreground">When someone likes or comments on one of your posts, you&apos;ll see it here.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

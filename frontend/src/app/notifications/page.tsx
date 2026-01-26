@@ -2,26 +2,26 @@
 
 import { Sidebar } from "@/components/sidebar"
 import { NotificationItem } from "@/components/notification-item"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
+
 import { useAuth } from "@/components/auth-provider"
 import { redirect } from "next/navigation"
 import { useState, useEffect } from "react"
-import { getNotifications, markAllNotificationsAsRead } from "@/lib/services/notifications"
+import { getNotifications } from "@/lib/services/notifications"
 import { useNotificationStore } from "@/stores/useNotificationStore"
-import { useNotifications } from "@/components/notification-provider"
-import { Check } from "lucide-react"
+
+import { ArrowLeft, Heart } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function NotificationsPage() {
     const { isAuthenticated } = useAuth()
     const { 
         notifications, 
-        unreadCount, 
-        setNotifications, 
-        markAllAsRead 
+        setNotifications
     } = useNotificationStore()
-    const { isConnected } = useNotifications()
+
     const [loading, setLoading] = useState(true)
+
+    const router = useRouter()
 
     if (!isAuthenticated) {
         redirect("/login")
@@ -42,15 +42,7 @@ export default function NotificationsPage() {
         fetchNotifications()
     }, [setNotifications])
 
-    const handleMarkAllAsRead = async () => {
-        try {
-            await markAllNotificationsAsRead()
-            markAllAsRead() // Update local store
-            console.log("✅ All notifications marked as read")
-        } catch (error) {
-            console.error("Failed to mark all notifications as read:", error)
-        }
-    }
+
 
     if (loading) return <p>Loading...</p>
 
@@ -60,65 +52,49 @@ export default function NotificationsPage() {
                 <Sidebar />
                 <main className="flex-1 lg:ml-64">
                     <div className="max-w-2xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center space-x-4">
-                                <h1 className="text-2xl font-bold">Notifications</h1>
-                                {unreadCount > 0 && (
-                                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                                        {unreadCount} new
-                                    </span>
-                                )}
-                                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                            </div>
-                            
-                            {unreadCount > 0 && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleMarkAllAsRead}
-                                    className="flex items-center space-x-1"
+                        {/* Mobile-only fixed header — visible on small screens */}
+                        <div className="fixed top-0 left-0 right-0 z-40 bg-background border-b lg:hidden">
+                          <div className="relative max-w-2xl mx-auto px-4 py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                {/* Back button only visible on mobile */}
+                                <button
+                                  className="lg:hidden -ml-2 p-2 rounded-full hover:bg-zinc-100"
+                                  onClick={() => router.back()}
+                                  aria-label="Back"
                                 >
-                                    <Check className="w-4 h-4" />
-                                    <span>Mark all as read</span>
-                                </Button>
-                            )}
+                                  <ArrowLeft className="w-5 h-5" />
+                                </button>
+                              </div>
+
+                              {/* right placeholder to balance layout */}
+                              <div className="w-6" />
+                            </div>
+
+                            <div className="absolute inset-x-0 top-1/2 transform -translate-y-1/2 flex justify-center pointer-events-none">
+                              <h1 className="text-xl font-bold pointer-events-auto">Notifications</h1>
+                            </div>
+                          </div>
                         </div>
 
-                        <Tabs defaultValue="all" className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 mb-6">
-                                <TabsTrigger value="all">All</TabsTrigger>
-                                <TabsTrigger value="follows">Follows</TabsTrigger>
-                                <TabsTrigger value="mentions">Mentions</TabsTrigger>
-                            </TabsList>
+                        {/* Spacer to account for mobile fixed header; collapse on lg where header is non-fixed */}
+                        <div className="h-12 lg:h-0" />
 
-                            <TabsContent value="all" className="space-y-4">
-                                {notifications.length > 0 ? (
-                                    notifications.map((notification) => (
-                                        <NotificationItem key={notification.id} notification={notification} />
-                                    ))
-                                ) : (
-                                    <div className="text-center text-muted-foreground py-8">
-                                        No notifications yet
-                                    </div>
-                                )}
-                            </TabsContent>
-
-                            <TabsContent value="follows" className="space-y-4">
-                                {notifications
-                                    .filter((notification) => notification.type === "follow")
-                                    .map((notification) => (
-                                        <NotificationItem key={notification.id} notification={notification} />
-                                    ))}
-                            </TabsContent>
-
-                            <TabsContent value="mentions" className="space-y-4">
-                                {notifications
-                                    .filter((notification) => notification.type === "mention")
-                                    .map((notification) => (
-                                        <NotificationItem key={notification.id} notification={notification} />
-                                    ))}
-                            </TabsContent>
-                        </Tabs>
+                        <div className="w-full space-y-4">
+                          {notifications.length > 0 ? (
+                            notifications.map((notification) => (
+                              <NotificationItem key={notification.id} notification={notification} />
+                            ))
+                          ) : (
+                            <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                              <div className="rounded-full border border-muted-foreground/10 p-4 mb-4 h-20 w-20 flex items-center justify-center">
+                                <Heart className="w-8 h-8 text-muted-foreground" />
+                              </div>
+                              <h2 className="text-lg font-semibold text-foreground mb-2">Activity On Your Posts</h2>
+                              <p className="max-w-[56ch] text-sm text-muted-foreground">When someone likes or comments on one of your posts, you&apos;ll see it here.</p>
+                            </div>
+                          )}
+                        </div>
                     </div>
                 </main>
             </div>
