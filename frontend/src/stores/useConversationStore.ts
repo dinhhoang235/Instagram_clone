@@ -2,6 +2,11 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { MessageListType } from "@/types/chat"
 
+// Payload type accepted by setConversations. Backend may return either an array
+// of MessageListType or an object with a `conversations` array and optional errors.
+// Use `unknown` for errors to avoid `any` while keeping flexibility.
+type ConversationsPayload = MessageListType[] | { conversations: MessageListType[]; errors?: unknown[] }
+
 type ConversationStore = {
   conversations: MessageListType[]
   setConversations: (convos: MessageListType[]) => void
@@ -27,7 +32,7 @@ export const useConversationStore = create<ConversationStore>()(
     (set) => ({
       conversations: [],
 
-      setConversations: (convos: any) => {
+      setConversations: (convos: ConversationsPayload) => {
         // Normalize possible response shapes: array, { conversations: [...] }, or unexpected
         if (Array.isArray(convos)) {
           set({ conversations: convos })

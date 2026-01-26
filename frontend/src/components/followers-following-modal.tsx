@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -68,10 +68,12 @@ export function FollowersFollowingModal({
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
-    const filtered = users.filter(user =>
-      user.username.toLowerCase().includes(query.toLowerCase()) ||
-      user.full_name.toLowerCase().includes(query.toLowerCase())
-    )
+    const q = query.toLowerCase()
+    const filtered = users.filter(user => {
+      const username = (user.username || "").toLowerCase()
+      const fullName = (user.full_name || "").toLowerCase()
+      return username.includes(q) || fullName.includes(q)
+    })
     setFilteredUsers(filtered)
   }
 
@@ -102,22 +104,23 @@ export function FollowersFollowingModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-sm p-0 gap-0 flex flex-col h-full sm:max-h-[60vh]">
+        <div className="px-4 pt-4 pb-3 border-b flex items-center justify-center">
           <DialogTitle className="text-center">
             {type === 'followers' ? 'Followers' : 'Following'}
           </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4">
+        </div>
+
+        <div className="px-4 py-3 border-b">
           <Input
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="w-full"
           />
-          
-          <ScrollArea className="h-[400px] w-full rounded-md border p-4">
+        </div>
+
+        <ScrollArea className="flex-1 min-h-0 w-full rounded-md border p-4">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <p className="text-muted-foreground">Loading...</p>
@@ -144,7 +147,9 @@ export function FollowersFollowingModal({
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{user.username}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.full_name}</p>
+                        {user.full_name && (
+                          <p className="text-sm text-muted-foreground truncate">{user.full_name}</p>
+                        )}
                       </div>
                     </Link>
                     
@@ -175,8 +180,7 @@ export function FollowersFollowingModal({
                 ))}
               </div>
             )}
-          </ScrollArea>
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )

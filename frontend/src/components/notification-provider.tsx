@@ -68,20 +68,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   }, [])
 
   // Function to connect to WebSocket
-  const connectNotifications = React.useCallback(() => {
+  const connectNotifications = React.useCallback(async () => {
     if (!isAuthenticated) {
       return
     }
 
-    // Don't create multiple connections
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    // Don't create multiple connections (already open or connecting)
+    if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
       return
     }
 
     setIsConnecting(true)
 
     try {
-      const socket = connectNotificationSocket()
+      const socket = await connectNotificationSocket()
       socketRef.current = socket
 
       socket.onopen = () => {
@@ -119,6 +119,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
       socket.onclose = (event) => {
+        console.warn("WebSocket closed", {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+          url: ((socket as unknown) as { url?: string })?.url ?? ((socketRef.current as unknown) as { url?: string })?.url,
+          readyState: socket.readyState,
+        })
+
         setIsConnected(false)
         setIsConnecting(false)
         
@@ -132,6 +140,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
       socket.onerror = (error) => {
+        console.error("WebSocket error:", error, {
+          url: ((socket as unknown) as { url?: string })?.url ?? ((socketRef.current as unknown) as { url?: string })?.url,
+          readyState: socket.readyState,
+        })
+
         setIsConnected(false)
         setIsConnecting(false)
         
@@ -146,6 +159,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } catch (error) {
       console.error("Failed to create WebSocket connection:", error)
       setIsConnecting(false)
+
+      // If auth-related error, try again after a bit (allows token refresh flow to resolve)
+      if (isAuthenticated) {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connectNotifications()
+        }, 5000)
+      }
     }
   }, [isAuthenticated, addNotification, playNotificationSound])
 

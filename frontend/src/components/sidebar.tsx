@@ -58,6 +58,7 @@ export function Sidebar() {
   const router = useRouter()
   const { isAuthenticated, logout } = useAuth()
   const { isConnected, isConnecting } = useWebSocket()
+  const isNotificationsPage = pathname === "/notifications"
   const [navigation, setNavigation] = useState(getNavigation(""))
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -120,8 +121,8 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Header - hidden on explore pages */}
-      {!pathname.startsWith("/explore") && (
+      {/* Mobile Header - show only on home page */}
+      {pathname === "/" && (
         <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b">
           <div className="flex items-center justify-between h-14 px-4">
             {/* Instagram Logo */}
@@ -143,7 +144,7 @@ export function Sidebar() {
               <Link href="/notifications" className="relative">
                 <Heart className={cn(
                   "w-6 h-6",
-                  pathname === "/notifications" ? "fill-current" : ""
+                  isNotificationsPage ? "fill-current" : ""
                 )} />
                 {unreadNotificationCount > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 text-[10px] font-medium border-2 border-background">

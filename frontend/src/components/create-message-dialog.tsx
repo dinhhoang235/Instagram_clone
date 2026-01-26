@@ -70,7 +70,7 @@ export function CreateMessageDialog({ open, onClose, onSelectUser }: CreateMessa
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md p-0 gap-0">
+      <DialogContent className="sm:max-w-md p-0 gap-0 flex flex-col max-h-[80vh] sm:max-h-[60vh]">
         {/* Visually hidden title for accessibility */}
         <VisuallyHidden.Root asChild>
           <DialogTitle>New message</DialogTitle>
@@ -150,7 +150,7 @@ export function CreateMessageDialog({ open, onClose, onSelectUser }: CreateMessa
         </div>
 
         {/* Chat Button */}
-        <div className="px-4 py-3 border-t">
+        <div className="px-4 py-3 border-t sticky bottom-0 bg-background z-10">
           <Button
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold"
             disabled={!selectedUser}

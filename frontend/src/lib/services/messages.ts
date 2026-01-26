@@ -2,10 +2,11 @@ import api from "@/lib/api";
 import { MessageType, MessageListType, PaginatedResponse } from "@/types/chat";
 import type { MarkReadResponse, SendFirstMessageResponse } from "@/types/chat";
 
+type ConversationsResponse = MessageListType[] | { conversations: MessageListType[]; errors?: unknown[] }
 
 // Lấy danh sách cuộc trò chuyện
 export async function getConversations(): Promise<MessageListType[]> {
-    const res = await api.get<any>("/chats/conversations/")
+    const res = await api.get<ConversationsResponse>("/chats/conversations/")
     // Backend may return either an array or an object { conversations: [...], errors: [...] }
     if (res.data && Array.isArray(res.data)) {
         return res.data as MessageListType[]

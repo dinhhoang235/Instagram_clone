@@ -159,10 +159,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class ProfileShortSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username')
     avatar = serializers.SerializerMethodField()
+    full_name = serializers.CharField(allow_null=True, required=False, read_only=True)
 
     class Meta:
         model = Profile
-        fields = ['username', 'avatar', 'is_verified']
+        fields = ['username', 'full_name', 'avatar', 'is_verified']
 
     def get_avatar(self, obj):
         request = self.context.get('request')
