@@ -149,6 +149,17 @@ export default function ProfilePage() {
                 <Sidebar />
                 <main className="flex-1 lg:ml-64">
                     <div className="max-w-4xl mx-auto px-4 py-6 pt-16 pb-20 lg:pt-8 lg:pb-8 text-lg">
+                        {/* Top Header: Settings + Username (mobile only, fixed) */}
+                        <div className="fixed top-0 left-0 right-0 z-30 bg-background border-b border-border lg:hidden">
+                            <div className="max-w-4xl mx-auto px-4 py-2 flex items-center justify-between">
+                                <button onClick={() => router.push('/account/settings')} className="w-8 h-8 bg-muted rounded-full flex items-center justify-center hover:bg-muted/80">
+                                    <Settings className="w-4 h-4" />
+                                </button>
+                                <h2 className="text-lg font-semibold">{user.username}</h2>
+                                <div className="w-8 h-8" />
+                            </div>
+                        </div>
+
                         {/* Profile Header - Side by Side Layout */}
                         <div className="flex items-start space-x-6 mb-6">
                             {/* Avatar with Note Button */}
@@ -161,15 +172,12 @@ export default function ProfilePage() {
 
                             {/* User Info */}
                             <div className="flex-1 min-w-0">
-                                {/* Username and Settings */}
+                                {/* Username */}
                                 <div className="flex items-center space-x-2 mb-3">
                                     <h1 className="text-2xl font-semibold">{user.username}</h1>
                                     {user.is_verified && (
                                         <BadgeCheck className="w-5 h-5 text-blue-500 fill-current flex-shrink-0" />
                                     )}
-                                    <button className="ml-auto w-6 h-6 bg-muted rounded-full flex items-center justify-center hover:bg-muted/80">
-                                        <Settings className="w-4 h-4" />
-                                    </button>
                                 </div>
 
                                 {/* Full Name */}

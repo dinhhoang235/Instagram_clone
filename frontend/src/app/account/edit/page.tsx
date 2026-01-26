@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/components/auth-provider"
 import { redirect } from "next/navigation"
-import { Camera, X, Eye, EyeOff, Globe, Lock, Users } from "lucide-react"
+import { Camera, X, Eye, EyeOff, Globe, Lock, Users, ChevronLeft } from "lucide-react"
 import type { GenderOption, AllowOption, UpdateProfileInput } from "@/types/profile"
 import { getMyProfile, updateMyProfile } from "@/lib/services/profile"
 import { changePassword } from "@/lib/services/auth"
@@ -248,8 +248,22 @@ export default function EditProfilePage() {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 lg:ml-64">
-          <div className="max-w-4xl mx-auto px-4 py-8">
-            <div className="flex items-center justify-between mb-8">
+          <div className="max-w-4xl mx-auto px-4 pt-16 pb-24 lg:pt-8 lg:pb-8">
+            <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-border lg:hidden">
+              <div className="max-w-4xl mx-auto px-4 py-3 flex items-center">
+                <button
+                  onClick={() => router.back()}
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-white hover:bg-slate-50"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="w-5 h-5 text-foreground" />
+                </button>
+                <h1 className="flex-1 text-center font-semibold text-foreground">Edit Profile</h1>
+                <div className="w-8" />
+              </div>
+            </div>
+
+            <div className="hidden lg:flex items-center justify-between mb-8">
               <h1 className="text-2xl font-bold">Edit Profile</h1>
               <Button variant="outline" onClick={() => router.back()}>
                 Cancel

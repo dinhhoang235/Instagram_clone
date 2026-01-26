@@ -13,6 +13,12 @@ import {
   Menu,
   Instagram,
   LogOut,
+  Settings,
+  Clock,
+  Bookmark,
+  Moon,
+  HelpCircle,
+  Users,
 } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -97,6 +103,14 @@ export function Sidebar() {
   const isSidebarCollapsed = isSearchOpen || isCollapsedByDefault
   const sidebarWidthClass = enableHoverExpand ? "lg:w-20 lg:hover:w-64" : "lg:w-20"
 
+  // Expand sidebar when More menu is open
+  const [isMoreOpen, setIsMoreOpen] = useState(false)
+  const finalSidebarClass = isMoreOpen ? "lg:w-64" : sidebarWidthClass
+
+  // Mobile profile button
+  const profileMobile = navigation.find(item => item.name === "Profile")
+  const isProfileMobileActive = Boolean(profileMobile && pathname === profileMobile.href)
+
   // Effect to update browser title with unread count
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -158,7 +172,7 @@ export function Sidebar() {
       )}
 
       {/* Desktop Sidebar */}
-      <div className={cn("hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background overflow-hidden transition-all duration-200 ease-in-out group lg:z-50", sidebarWidthClass, isSearchOpen && "lg:hidden")}>
+          <div className={cn("hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:bg-background overflow-hidden transition-all duration-200 ease-in-out group lg:z-50", finalSidebarClass, isSearchOpen && "lg:hidden")}>
       <div className="flex flex-col flex-1 min-h-0 pt-5 pb-4">
         <Link href="/" className={cn("flex items-center flex-shrink-0 hover:opacity-80 transition-all px-5")}>
           <Instagram className="w-8 h-8 flex-shrink-0" />
@@ -200,7 +214,7 @@ export function Sidebar() {
                   <div className="relative flex-shrink-0 w-6 flex justify-center"> 
                     <Search className={cn("w-6 h-6", isActive ? "fill-current" : "")}/>
                   </div>
-                  <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
+                  <span className={cn("ml-4 whitespace-nowrap transition-all duration-200 ease-in-out", isMoreOpen ? "lg:opacity-100 lg:w-auto lg:overflow-visible" : "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto")}> 
                     {item.name}
                   </span>
                 </button>
@@ -231,7 +245,7 @@ export function Sidebar() {
                       </span>
                     )}
                   </div>
-                  <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
+                  <span className={cn("ml-4 whitespace-nowrap transition-all duration-200 ease-in-out", isMoreOpen ? "lg:opacity-100 lg:w-auto lg:overflow-visible" : "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto")}> 
                     {item.name}
                   </span>
                 </button>
@@ -266,7 +280,7 @@ export function Sidebar() {
                       <div className="w-7 h-7 rounded-full bg-muted" />
                     )}
                   </div>
-                  <span className="ml-3 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
+                  <span className={cn("ml-3 whitespace-nowrap transition-all duration-200 ease-in-out", isMoreOpen ? "lg:opacity-100 lg:w-auto lg:overflow-visible" : "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto")}> 
                     {item.name}
                   </span>
                 </Link>
@@ -304,7 +318,7 @@ export function Sidebar() {
                     </>
                   )}
                 </div>
-                <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto"> 
+                <span className={cn("ml-4 whitespace-nowrap transition-all duration-200 ease-in-out", isMoreOpen ? "lg:opacity-100 lg:w-auto lg:overflow-visible" : "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto")}> 
                   {item.name}
                 </span>
               </Link>
@@ -326,25 +340,50 @@ export function Sidebar() {
         )}
         
         <div className="flex-shrink-0 px-3">
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={(open: boolean) => setIsMoreOpen(open)}>
+
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors">
+              <button className="flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0">
                 <div className="relative flex-shrink-0 w-6 flex justify-center">
                   <Menu className="w-6 h-6" />
                 </div>
-                <span className="ml-4 whitespace-nowrap transition-all duration-200 ease-in-out lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto">
+                <span className={cn("ml-4 whitespace-nowrap transition-all duration-200 ease-in-out", isMoreOpen ? "lg:opacity-100 lg:w-auto lg:overflow-visible" : "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto")}>
                   More
                 </span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Your activity</DropdownMenuItem>
-              <DropdownMenuItem>Saved</DropdownMenuItem>
-              <DropdownMenuItem>Switch appearance</DropdownMenuItem>
-              <DropdownMenuItem>Report a problem</DropdownMenuItem>
+          <DropdownMenuContent align="end" sideOffset={8} className="w-56 translate-x-1 rounded-md bg-white dark:bg-zinc-900 text-foreground dark:text-white shadow-lg p-1">
+              <DropdownMenuItem onSelect={() => router.push('/account/settings')} className="px-3 py-3">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/account/activity')} className="px-3 py-3">
+                <Clock className="w-4 h-4 mr-2" />
+                Your activity
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/saved')} className="px-3 py-3">
+                <Bookmark className="w-4 h-4 mr-2" />
+                Saved
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/account/switch_appearance')} className="px-3 py-3">
+                <Moon className="w-4 h-4 mr-2" />
+                Switch appearance
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push('/report')} className="px-3 py-3">
+                <HelpCircle className="w-4 h-4 mr-2" />
+                Report a problem
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-500">
+
+              <DropdownMenuItem onSelect={() => { /* TODO: implement account switching UI */ }} className="px-3 py-3">
+                <Users className="w-4 h-4 mr-2" />
+                Switch accounts
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem onClick={handleLogout} className="px-3 py-3 text-red-500">
                 <LogOut className="w-4 h-4 mr-2" />
                 Log out
               </DropdownMenuItem>
@@ -436,35 +475,27 @@ export function Sidebar() {
             )
           })}
           
-          {/* More Menu for Mobile */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex flex-col items-center justify-center flex-1 py-2 text-muted-foreground">
-                <Menu className="w-6 h-6" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 mb-2">
-              {navigation.filter(item => !mobileNavigation.find(m => m.name === item.name)).map((item) => (
-                <DropdownMenuItem key={item.name} asChild>
-                  <Link href={item.href} onClick={() => { if (isSearchOpen) setIsSearchOpen(false) }} className="flex items-center cursor-pointer">
-                    {renderIcon(item.icon, { className: "w-4 h-4 mr-2" })}
-                    {item.name}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Your activity</DropdownMenuItem>
-              <DropdownMenuItem>Saved</DropdownMenuItem>
-              <DropdownMenuItem>Switch appearance</DropdownMenuItem>
-              <DropdownMenuItem>Report a problem</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-500">
-                <LogOut className="w-4 h-4 mr-2" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Profile button (mobile) */}
+          <Link
+            href={profileMobile?.href || '/'}
+            onClick={() => { if (isSearchOpen) setIsSearchOpen(false) }}
+            className="flex flex-col items-center justify-center flex-1 py-2"
+            aria-current={isProfileMobileActive ? 'page' : undefined}
+          >
+            <div className="relative">
+              {profileMobile?.avatarUrl ? (
+                <Image
+                  src={profileMobile.avatarUrl}
+                  alt="Profile"
+                  width={24}
+                  height={24}
+                  className={cn("rounded-full object-cover mx-auto", isProfileMobileActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "")}
+                />
+              ) : (
+                <div className={cn("w-6 h-6 rounded-full mx-auto", isProfileMobileActive ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "bg-muted")} />
+              )}
+            </div>
+          </Link>
         </nav>
         
         {/* WebSocket Connection Status for Mobile */}
