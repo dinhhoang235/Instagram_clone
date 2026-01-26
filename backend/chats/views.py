@@ -62,12 +62,13 @@ class ConversationListView(APIView):
                     logger.exception(f"Failed to serialize thread {getattr(thread, 'id', 'unknown')}")
                     errors.append({'thread_id': getattr(thread, 'id', None), 'error': str(ex)})
 
-            # If nothing serialized successfully, return 500 with errors for debugging
-            if not results:
+            # If nothing serialized successfully and we have errors, return 500
+            # But if there are no threads (empty results) and no errors, return an empty list (200 OK)
+            if not results and errors:
                 logger.error("No conversations serialized successfully", extra={'errors': errors})
                 return Response({'error': 'Failed to serialize conversations', 'details': errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # Return partial results and include any thread-level errors for visibility
+            # Return results (may be empty) and include any thread-level errors for visibility
             response_payload = {'conversations': results}
             if errors:
                 response_payload['errors'] = errors
