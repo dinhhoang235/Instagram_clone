@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import React, { useState } from "react"
-import { Sidebar } from "@/components/sidebar"
+
 import { useAuth } from "@/components/auth-provider"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
@@ -23,6 +23,7 @@ import {
     Film,
     Send,
     User,
+    Lock,
 } from "lucide-react"
 
 export default function AccountSettingsPage() {
@@ -58,7 +59,6 @@ export default function AccountSettingsPage() {
     return (
         <div className="min-h-screen bg-white text-foreground">
             <div className="flex">
-                <Sidebar />
                 <main className="flex-1 lg:ml-64">
                     {/* Fixed header (mobile only) */}
                     <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-border lg:hidden">
@@ -77,9 +77,11 @@ export default function AccountSettingsPage() {
 
                     {/* Content (offset for fixed header on mobile) */}
                     <div className="pt-16 lg:pt-8 pb-24">
-                        <div className="max-w-4xl mx-auto px-4">
+                        <div className="max-w-4xl mx-auto px-4 lg:hidden">
                             <section className="rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
                                 {sectionItem(User, "Edit profile", () => router.push('/account/edit'))}
+                                {sectionItem(ShieldCheck, "Privacy", () => router.push('/account/privacy'))}
+                                {sectionItem(Lock, "Security", () => router.push('/account/security'))}
                                 {sectionItem(Sun, "Switch appearance", () => router.push('/account/switch_appearance'))}
                                 {sectionItem(Globe, "Language", () => { })}
                                 {sectionItem(SettingsIcon, "Website permissions", () => { })}

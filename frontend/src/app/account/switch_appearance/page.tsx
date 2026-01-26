@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/sidebar"
+
 import { Switch } from "@/components/ui/switch"
 import { ChevronLeft } from "lucide-react"
 
@@ -39,8 +39,7 @@ export default function SwitchAppearancePage() {
   return (
     <div className={"min-h-screen " + (dark ? "bg-zinc-900 text-white" : "bg-white text-foreground")}>
       <div className="flex">
-        <Sidebar />
-        <main className="flex-1 lg:ml-64">
+        <main className="flex-1">
           {/* Fixed header (mobile only) */}
           <div className={"fixed top-0 left-0 right-0 z-40 " + (dark ? "bg-zinc-900" : "bg-white") + " border-b border-border lg:hidden"}>
             <div className="max-w-4xl mx-auto px-4 py-3 flex items-center">
