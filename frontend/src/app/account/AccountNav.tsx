@@ -17,7 +17,7 @@ export default function AccountNav() {
         key={label}
         onClick={() => to && router.push(to)}
         className={
-          `w-full flex items-center gap-4 px-4 py-4 ${isActive ? "bg-slate-100" : "bg-white hover:bg-slate-50"}`
+          `w-full flex items-center gap-4 px-4 py-4 ${isActive ? "bg-muted" : "bg-card hover:bg-muted/50"}`
         }
       >
         <Icon className="w-5 h-5 text-muted-foreground" />
@@ -31,7 +31,7 @@ export default function AccountNav() {
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Settings</h2>
 
-      <section className="rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
+      <section className="rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
         {sectionItem(User, "Edit profile", "/account/edit")}
         {sectionItem(ShieldCheck, "Privacy", "/account/privacy")}
         {sectionItem(Lock, "Security", "/account/security")}
@@ -40,19 +40,19 @@ export default function AccountNav() {
         {sectionItem(SettingsIcon, "Website permissions")}
       </section>
 
-      <section className="mt-4 rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
+      <section className="mt-4 rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
         <div className="px-4 py-2 text-muted-foreground text-xs">Family Center</div>
         {sectionItem(ShieldCheck, "Supervision for Teen Accounts")}
       </section>
 
-      <section className="mt-4 rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
+      <section className="mt-4 rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
         <div className="px-4 py-2 text-muted-foreground text-xs">For professionals</div>
         {sectionItem(UserCheck, "Account type and tools")}
         {sectionItem(ShieldCheck, "Meta Verified")}
       </section>
 
-      <section className="mt-4 rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
-        <div className="px-4 py-2 text-slate-400 text-xs">More info and support</div>
+      <section className="mt-4 rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
+        <div className="px-4 py-2 text-muted-foreground text-xs">More info and support</div>
         {sectionItem(QrCode, "QR code")}
         {sectionItem(HelpCircle, "Help")}
         {sectionItem(AlertCircle, "Account Status")}

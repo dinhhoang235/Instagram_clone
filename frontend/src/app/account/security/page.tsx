@@ -68,11 +68,11 @@ export default function SecurityPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 pt-12 pb-20 lg:pt-4 lg:pb-4">
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-border lg:hidden">
+      <div className="fixed top-0 left-0 right-0 z-40 bg-background border-b border-border lg:hidden">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center">
           <button
             onClick={() => router.back()}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-white hover:bg-slate-50"
+            className="w-8 h-8 rounded-full flex items-center justify-center bg-background hover:bg-muted/50"
             aria-label="Back"
           >
             <ChevronLeft className="w-5 h-5 text-foreground" />
@@ -87,7 +87,7 @@ export default function SecurityPage() {
       </div>
 
       <section className="space-y-6">
-        <div className="rounded-md overflow-hidden bg-white shadow-sm">
+        <div className="rounded-md overflow-hidden bg-card shadow-sm">
           <div className="p-6">
             <form onSubmit={handlePasswordSubmit} className="space-y-6">
               <div className="space-y-2">
@@ -176,7 +176,7 @@ export default function SecurityPage() {
           </div>
         </div>
 
-        <div className="rounded-md overflow-hidden bg-white shadow-sm mt-6">
+        <div className="rounded-md overflow-hidden bg-card shadow-sm mt-6">
           <div className="p-6">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
@@ -187,7 +187,7 @@ export default function SecurityPage() {
           </div>
         </div>
 
-        <div className="rounded-md overflow-hidden bg-white shadow-sm mt-6">
+        <div className="rounded-md overflow-hidden bg-card shadow-sm mt-6">
           <div className="p-6">
             <div className="space-y-4">
               <div className="space-y-2">

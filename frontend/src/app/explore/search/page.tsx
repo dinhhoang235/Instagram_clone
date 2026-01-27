@@ -77,7 +77,7 @@ export default function ExploreSearchPage() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search"
-                    className="pl-10 pr-10 rounded-full bg-zinc-100 text-zinc-900 placeholder:text-zinc-400 border-0 shadow-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 focus-visible:ring-0 ring-offset-0 focus:ring-offset-0 focus-visible:ring-offset-0"
+                    className="pl-10 pr-10 rounded-full bg-muted text-foreground placeholder:text-muted-foreground border-0 shadow-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 focus-visible:ring-0 ring-offset-0 focus:ring-offset-0 focus-visible:ring-offset-0"
                   />
 
                   {query && (

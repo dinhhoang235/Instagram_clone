@@ -48,7 +48,7 @@ export default function AccountSettingsPage() {
     const sectionItem = (Icon: IconComponent, label: string, onClick?: () => void) => (
         <button
             onClick={onClick}
-            className="w-full flex items-center gap-4 px-4 py-4 bg-white hover:bg-slate-50"
+            className="w-full flex items-center gap-4 px-4 py-4 bg-card hover:bg-muted/50"
         >
             <Icon className="w-5 h-5 text-muted-foreground" />
             <span className="flex-1 text-left text-foreground">{label}</span>
@@ -57,15 +57,15 @@ export default function AccountSettingsPage() {
     )
 
     return (
-        <div className="min-h-screen bg-white text-foreground">
+        <div className="min-h-screen bg-background text-foreground">
             <div className="flex">
                 <main className="flex-1 lg:ml-64">
                     {/* Fixed header (mobile only) */}
-                    <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-border lg:hidden">
+                    <div className="fixed top-0 left-0 right-0 z-40 bg-background border-b border-border lg:hidden">
                         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center">
                             <button
                                 onClick={() => router.back()}
-                                className="w-8 h-8 rounded-full flex items-center justify-center bg-white hover:bg-slate-50"
+                                className="w-8 h-8 rounded-full flex items-center justify-center bg-background hover:bg-muted/50"
                                 aria-label="Back"
                             >
                                 <ChevronLeft className="w-5 h-5 text-foreground" />
@@ -78,7 +78,7 @@ export default function AccountSettingsPage() {
                     {/* Content (offset for fixed header on mobile) */}
                     <div className="pt-16 lg:pt-8 pb-24">
                         <div className="max-w-4xl mx-auto px-4 lg:hidden">
-                            <section className="rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
+                            <section className="rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
                                 {sectionItem(User, "Edit profile", () => router.push('/account/edit'))}
                                 {sectionItem(ShieldCheck, "Privacy", () => router.push('/account/privacy'))}
                                 {sectionItem(Lock, "Security", () => router.push('/account/security'))}
@@ -87,19 +87,19 @@ export default function AccountSettingsPage() {
                                 {sectionItem(SettingsIcon, "Website permissions", () => { })}
                             </section>
 
-                            <section className="mt-4 rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
+                            <section className="mt-4 rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
                                 <div className="px-4 py-2 text-muted-foreground text-xs">Family Center</div>
                                 {sectionItem(ShieldCheck, "Supervision for Teen Accounts", () => { })}
                             </section>
 
-                            <section className="mt-4 rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
+                            <section className="mt-4 rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
                                 <div className="px-4 py-2 text-muted-foreground text-xs">For professionals</div>
                                 {sectionItem(UserCheck, "Account type and tools", () => { })}
                                 {sectionItem(ShieldCheck, "Meta Verified", () => { })}
                             </section>
 
-                            <section className="mt-4 rounded-md overflow-hidden bg-white divide-y divide-border shadow-sm">
-                                <div className="px-4 py-2 text-slate-400 text-xs">More info and support</div>
+                            <section className="mt-4 rounded-md overflow-hidden bg-card divide-y divide-border shadow-sm">
+                                <div className="px-4 py-2 text-muted-foreground text-xs">More info and support</div>
                                 {sectionItem(QrCode, "QR code", () => { })}
                                 {sectionItem(HelpCircle, "Help", () => { })}
                                 {sectionItem(AlertCircle, "Account Status", () => { })}
@@ -124,7 +124,7 @@ export default function AccountSettingsPage() {
                                     </VisuallyHidden.Root>
 
                                     <div className="flex items-center justify-center min-h-full p-4 lg:hidden" onClick={() => setConfirmOpen(false)}>
-                                        <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xs bg-white text-foreground rounded-md overflow-hidden shadow-lg">
+                                        <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xs bg-card text-foreground rounded-md overflow-hidden shadow-lg">
                                             <div className="px-4 py-4 text-center font-semibold">Log out?</div>
                                             <div className="px-4 pb-4 text-center text-sm text-muted-foreground">Are you sure you want to log out of your account?</div>
                                             <div className="border-t border-border">
@@ -141,7 +141,7 @@ export default function AccountSettingsPage() {
                     </div>
 
                     {/* Bottom navigation (mobile only) */}
-                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border py-2 lg:hidden">
+                    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border py-2 lg:hidden">
                         <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
                             <button className="flex-1 text-center">
                                 <Home className="w-6 h-6 text-muted-foreground mx-auto" />

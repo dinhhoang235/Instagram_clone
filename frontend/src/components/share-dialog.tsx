@@ -101,7 +101,7 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 bg-white text-black">
+      <DialogContent className="sm:max-w-md p-0 gap-0 bg-card text-foreground">
         {/* Visually hidden title/description for accessibility */}
         <VisuallyHidden.Root asChild>
           <DialogTitle>Share</DialogTitle>
@@ -112,15 +112,15 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
 
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-center px-4 py-3 border-b border-gray-200 relative">
-            <h2 className="text-base font-semibold text-black">Share</h2>
+          <div className="flex items-center justify-center px-4 py-3 border-b border-border relative">
+            <h2 className="text-base font-semibold text-foreground">Share</h2>
           </div>
 
           {/* Search (moved up) */}
-          <div className="px-4 py-3 border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center">
-              <div className="flex items-center bg-gray-100 rounded-lg px-3 py-2 flex-1">
-                <svg className="w-4 h-4 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center bg-muted/50 rounded-lg px-3 py-2 flex-1">
+                <svg className="w-4 h-4 text-muted-foreground mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <Input
@@ -146,7 +146,7 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
                       inputRef.current?.focus()
                     }}
                     aria-label="Clear search"
-                    className="ml-2 text-gray-500 hover:text-gray-700"
+                    className="ml-2 text-muted-foreground hover:text-foreground"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor">
                       <path d="M6 6l8 8M14 6l-8 8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
@@ -164,7 +164,7 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
                     setSelectedUser(null)
                     setIsSearching(false)
                   }}
-                  className="ml-4 text-sm font-medium text-gray-700"
+                  className="ml-4 text-sm font-medium text-foreground"
                 >
                   Cancel
                 </button>
@@ -175,32 +175,32 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
           {/* Main content - users (grid or list) */}
           <main className="px-4 py-4 overflow-y-auto md:h-[404px] flex-1">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <div className="text-sm text-muted-foreground">Loading...</div>
             ) : users.length === 0 ? (
-              <div className="text-sm text-gray-500">No users found</div>
+              <div className="text-sm text-muted-foreground">No users found</div>
             ) : isSearching ? (
               // When user is searching (or in search mode), show a vertical list similar to IG
               <div>
-                <div className="mb-3 text-sm font-medium text-gray-700">More Users</div>
-                <div className="divide-y rounded-md border border-gray-100 bg-white">
+                <div className="mb-3 text-sm font-medium text-foreground">More Users</div>
+                <div className="divide-y rounded-md border border-border bg-card">
                   {users.map((user) => (
                     <button
                       key={user.id}
                       onClick={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
-                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10">
                           <Avatar className="w-10 h-10">
                             <AvatarImage src={user.avatar || "/placeholder-user.jpg"} />
-                            <AvatarFallback className="bg-gray-200 text-gray-700">
+                            <AvatarFallback className="bg-muted text-muted-foreground">
                               {user.username.slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         </div>
                         <div className="truncate">
-                          <div className="text-sm font-medium text-gray-900 truncate">{user.full_name || user.username}</div>
-                          <div className="text-xs text-gray-500 truncate">{user.username}</div>
+                          <div className="text-sm font-medium text-foreground truncate">{user.full_name || user.username}</div>
+                          <div className="text-xs text-muted-foreground truncate">{user.username}</div>
                         </div>
                       </div>
 
@@ -212,7 +212,7 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
                             </svg>
                           </div>
                         ) : (
-                          <div className="w-6 h-6 rounded-full border border-gray-300" />
+                          <div className="w-6 h-6 rounded-full border border-border" />
                         )}
                       </div>
                     </button>
@@ -228,9 +228,9 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
                     onClick={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
                   >
                     <div className="relative w-16 h-16 mx-auto mb-2">
-                      <Avatar className="w-16 h-16 border-2 border-gray-200">
+                      <Avatar className="w-16 h-16 border-2 border-border">
                         <AvatarImage src={user.avatar || "/placeholder-user.jpg"} />
-                        <AvatarFallback className="bg-gray-200 text-gray-700">
+                        <AvatarFallback className="bg-muted text-muted-foreground">
                           {user.username.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -242,7 +242,7 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
                         </div>
                       )}
                     </div>
-                    <div className="text-xs truncate text-gray-900">{user.username}</div>
+                    <div className="text-xs truncate text-foreground">{user.username}</div>
                   </div>
                 ))}
               </div>
@@ -250,35 +250,35 @@ export default function ShareDialog({ open, onClose, onSelectUser, urlToShare }:
           </main>
 
           {/* Share options - anchored above send */}
-          <div className="px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="px-4 py-3 border-t border-border bg-card">
             <div className="flex items-center justify-between gap-4">
               {shareTargets.map((t) => (
                 <div key={t.key} className="flex-1 flex flex-col items-center text-center">
                   {t.onClick ? (
                     <button
                       onClick={t.onClick}
-                      className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                      className="w-12 h-12 rounded-full bg-muted/50 hover:bg-muted/60 flex items-center justify-center transition-colors"
                     >
-                      <div className="text-gray-700">{t.icon}</div>
+                      <div className="text-muted-foreground">{t.icon}</div>
                     </button>
                   ) : (
                     <a
                       href={t.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors mx-auto"
+                      className="w-12 h-12 rounded-full bg-muted/50 hover:bg-muted/60 flex items-center justify-center transition-colors mx-auto"
                     >
-                      <div className="text-gray-700">{t.icon}</div>
+                      <div className="text-muted-foreground">{t.icon}</div>
                     </a>
                   )}
-                  <div className="text-xs mt-2 text-gray-700">{t.label}</div>
+                  <div className="text-xs mt-2 text-muted-foreground">{t.label}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Send Button (sticky at bottom) */}
-          <div className="px-4 py-4 border-t border-gray-200">
+          <div className="px-4 py-4 border-t border-border">
             <Button
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg py-2.5"
               disabled={!selectedUser}

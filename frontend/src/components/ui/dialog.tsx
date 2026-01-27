@@ -38,7 +38,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-0 z-50 grid w-full h-full gap-0 p-0 bg-white text-black shadow-lg duration-200 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:h-auto sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:p-0 sm:rounded-none sm:max-w-none md:translate-x-[-50%] md:translate-y-[-50%] md:w-[548px] md:h-[562.25px] md:max-w-[548px] md:p-0 md:rounded-none lg:w-[548px] lg:h-[562.25px] lg:max-w-[548px]",
+        "fixed inset-0 z-50 grid w-full h-full gap-0 p-0 bg-card text-foreground shadow-lg duration-200 overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:h-auto sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:p-0 sm:rounded-none sm:max-w-none md:translate-x-[-50%] md:translate-y-[-50%] md:w-[548px] md:h-[562.25px] md:max-w-[548px] md:p-0 md:rounded-none lg:w-[548px] lg:h-[562.25px] lg:max-w-[548px]",
         className
       )}
       {...props}

@@ -173,11 +173,11 @@ export default function EditProfilePage() {
       <div className="flex">
         <main className="flex-1">
           <div className="max-w-4xl mx-auto px-4 pt-12 pb-20 lg:pt-4 lg:pb-4">
-            <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-border lg:hidden">
+            <div className="fixed top-0 left-0 right-0 z-40 bg-background border-b border-border lg:hidden">
               <div className="max-w-4xl mx-auto px-4 py-3 flex items-center">
                 <button
                   onClick={() => router.back()}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-white hover:bg-slate-50"
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-background hover:bg-muted/50"
                   aria-label="Back"
                 >
                   <ChevronLeft className="w-5 h-5 text-foreground" />
@@ -191,7 +191,7 @@ export default function EditProfilePage() {
               <h1 className="text-2xl font-bold p-6">Edit Profile</h1>
             </div>
 
-            <div className="rounded-md overflow-hidden bg-white shadow-sm">
+            <div className="rounded-md overflow-hidden bg-card shadow-sm">
               <div className="p-6">
                 <form onSubmit={handleProfileSubmit} className="space-y-6">
                       {/* Profile Picture */}
