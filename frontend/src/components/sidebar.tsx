@@ -18,6 +18,7 @@ import {
   Bookmark,
   Moon,
   HelpCircle,
+  ChevronLeft,
   Users,
 } from "lucide-react"
 import Image from "next/image"
@@ -33,6 +34,8 @@ import {
 import { useConversationStore } from "@/stores/useConversationStore"
 import { useNotificationStore } from "@/stores/useNotificationStore"
 import { useWebSocket } from "@/components/message-provider"
+import { useTheme } from "next-themes"
+import { Switch } from "@/components/ui/switch"
 import React, { useEffect, useState } from "react"
 import { getMyProfile } from "@/lib/services/profile"
 import SearchDrawer from "@/components/search-drawer"
@@ -68,6 +71,18 @@ export function Sidebar() {
   const [navigation, setNavigation] = useState(getNavigation(""))
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+
+  // Submenu state for "Switch appearance"
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
+
+  // Use next-themes to keep appearance switches in sync across the app
+  const { setTheme, resolvedTheme } = useTheme()
+  const isDark = typeof resolvedTheme === "string" ? resolvedTheme === "dark" : (typeof window !== 'undefined' && document.documentElement.classList.contains('dark'))
+
+  const toggleDarkMode = (val?: boolean) => {
+    const next = typeof val === "boolean" ? val : !isDark
+    setTheme(next ? "dark" : "light")
+  }
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -340,7 +355,7 @@ export function Sidebar() {
         )}
         
         <div className="flex-shrink-0 px-3">
-          <DropdownMenu onOpenChange={(open: boolean) => setIsMoreOpen(open)}>
+          <DropdownMenu onOpenChange={(open: boolean) => { setIsMoreOpen(open); if (!open) setAppearanceOpen(false); }}>
 
             <DropdownMenuTrigger asChild>
               <button className="flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0">
@@ -353,41 +368,63 @@ export function Sidebar() {
               </button>
             </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8} className="w-56 translate-x-1 rounded-md bg-white dark:bg-zinc-900 text-foreground dark:text-white shadow-lg p-1">
-              <DropdownMenuItem onSelect={() => router.push('/account/settings')} className="px-3 py-3">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push('/account/activity')} className="px-3 py-3">
-                <Clock className="w-4 h-4 mr-2" />
-                Your activity
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push('/saved')} className="px-3 py-3">
-                <Bookmark className="w-4 h-4 mr-2" />
-                Saved
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push('/account/switch_appearance')} className="px-3 py-3">
-                <Moon className="w-4 h-4 mr-2" />
-                Switch appearance
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push('/report')} className="px-3 py-3">
-                <HelpCircle className="w-4 h-4 mr-2" />
-                Report a problem
-              </DropdownMenuItem>
+            {!appearanceOpen ? (
+              <>
+                <DropdownMenuItem onSelect={() => router.push('/account/settings')} className="px-3 py-3">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.push('/account/activity')} className="px-3 py-3">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Your activity
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.push('/saved')} className="px-3 py-3">
+                  <Bookmark className="w-4 h-4 mr-2" />
+                  Saved
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={(e: Event) => { e.preventDefault(); setAppearanceOpen(true); }} className="px-3 py-3">
+                  <Moon className="w-4 h-4 mr-2" />
+                  Switch appearance
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.push('/report')} className="px-3 py-3">
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Report a problem
+                </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
+                <DropdownMenuSeparator />
 
-              <DropdownMenuItem onSelect={() => { /* TODO: implement account switching UI */ }} className="px-3 py-3">
-                <Users className="w-4 h-4 mr-2" />
-                Switch accounts
-              </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { /* TODO: implement account switching UI */ }} className="px-3 py-3">
+                  <Users className="w-4 h-4 mr-2" />
+                  Switch accounts
+                </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
+                <DropdownMenuSeparator />
 
-              <DropdownMenuItem onClick={handleLogout} className="px-3 py-3 text-red-500">
-                <LogOut className="w-4 h-4 mr-2" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+                <DropdownMenuItem onClick={handleLogout} className="px-3 py-3 text-red-500">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Log out
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <div className="w-56">
+                <div className="flex items-center px-3 py-3 border-b border-zinc-200 dark:border-zinc-700">
+                  <button onClick={() => setAppearanceOpen(false)} className="mr-3 p-1 rounded focus:outline-none" aria-label="Back">
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <div className="flex-1 font-semibold">Switch appearance</div>
+                  <Moon className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="p-1">
+                  <div className="flex items-center justify-between w-full px-3 py-3">
+                    <div>
+                      <span className="ml-2">Dark mode</span>
+                    </div>
+                    <Switch checked={isDark} onCheckedChange={(v) => toggleDarkMode(v as boolean)} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
