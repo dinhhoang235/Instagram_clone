@@ -2,19 +2,45 @@
 
 import React from "react"
 import { useRouter } from "next/navigation"
-
+import { useEffect } from "react"
 import { Switch } from "@/components/ui/switch"
 import { ChevronLeft } from "lucide-react"
 import { useTheme } from "next-themes"
+import { getMyProfile, updateMyProfile } from "@/lib/services/profile"
+import { useAuth } from "@/components/auth-provider"
 
 export default function SwitchAppearancePage() {
   const router = useRouter()
   const { setTheme, resolvedTheme } = useTheme()
+  const { isAuthenticated } = useAuth()
   const isDark = typeof resolvedTheme === "string" ? resolvedTheme === "dark" : false
 
-  const toggle = (val?: boolean) => {
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const fetch = async () => {
+      try {
+        const profile = await getMyProfile()
+        if (profile && profile.theme) setTheme(profile.theme)
+      } catch (err) {
+        console.error("Failed to fetch profile:", err)
+      }
+    }
+    fetch()
+  }, [isAuthenticated, setTheme])
+
+  const toggle = async (val?: boolean) => {
     const next = typeof val === "boolean" ? val : !isDark
-    setTheme(next ? "dark" : "light")
+    const nextTheme = next ? "dark" : "light"
+
+    setTheme(nextTheme)
+
+    try {
+      if (isAuthenticated) {
+        await updateMyProfile({ theme: nextTheme })
+      }
+    } catch (err) {
+      console.error("Failed to update theme preference:", err)
+    }
   }
 
   return (

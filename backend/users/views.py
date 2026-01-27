@@ -10,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework_simplejwt.views import TokenViewBase
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Q
 from users.models import Profile
 from posts.models import Tag, Post
@@ -97,7 +97,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.select_related('user').all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser] # Allow file uploads
+    parser_classes = [JSONParser, MultiPartParser, FormParser] # Accept JSON and file uploads
 
     def get_object(self):
         pk = self.kwargs.get("pk")

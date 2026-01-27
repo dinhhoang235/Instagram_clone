@@ -37,7 +37,7 @@ import { useWebSocket } from "@/components/message-provider"
 import { useTheme } from "next-themes"
 import { Switch } from "@/components/ui/switch"
 import React, { useEffect, useState } from "react"
-import { getMyProfile } from "@/lib/services/profile"
+import { getMyProfile, updateMyProfile } from "@/lib/services/profile"
 import SearchDrawer from "@/components/search-drawer"
 import NotificationsDrawer from "@/components/notifications-drawer"
 
@@ -79,9 +79,21 @@ export function Sidebar() {
   const { setTheme, resolvedTheme } = useTheme()
   const isDark = typeof resolvedTheme === "string" ? resolvedTheme === "dark" : (typeof window !== 'undefined' && document.documentElement.classList.contains('dark'))
 
-  const toggleDarkMode = (val?: boolean) => {
+  const toggleDarkMode = async (val?: boolean) => {
     const next = typeof val === "boolean" ? val : !isDark
-    setTheme(next ? "dark" : "light")
+    const nextTheme = next ? "dark" : "light"
+
+    // Optimistically update UI
+    setTheme(nextTheme)
+
+    // Persist preference to backend for authenticated users
+    try {
+      if (isAuthenticated) {
+        await updateMyProfile({ theme: nextTheme })
+      }
+    } catch (err) {
+      console.error("Failed to update theme preference:", err)
+    }
   }
 
   useEffect(() => {
@@ -90,13 +102,17 @@ export function Sidebar() {
         try {
           const profile = await getMyProfile()
           setNavigation(getNavigation(profile.username, profile.avatar))
+          // Apply user's saved theme preference if available (default to 'light')
+          if (profile && profile.theme) {
+            setTheme(profile.theme)
+          }
         } catch (error) {
           console.error("Failed to fetch profile:", error)
         }
       }
       fetchProfile()
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, setTheme])
 
   const handleLogout = () => {
     logout()

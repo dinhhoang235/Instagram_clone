@@ -192,7 +192,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'full_name', 'bio', 'website', 'phone_number', 'gender',
             'avatar', 'avatarFile', 'is_verified',
             'is_private', 'allow_tagging', 'show_activity', 'allow_story_resharing',
-            'allow_comments', 'allow_messages',
+            'allow_comments', 'allow_messages', 'theme',
             'posts_count', 'followers_count', 'following_count',
             'is_following', 'is_self', 'mutual_followers_count', 'join_date'
         ]

@@ -37,6 +37,9 @@ class Profile(models.Model):
     allow_comments = models.CharField(max_length=20, choices=ALLOW_CHOICES, default='everyone')
     allow_messages = models.CharField(max_length=20, choices=ALLOW_CHOICES, default='everyone')
 
+    # Preferred theme: light or dark (default light)
+    theme = models.CharField(max_length=10, choices=[('light', 'Light'), ('dark', 'Dark')], default='light')
+
     # When the user was last seen offline (updated when all WebSocket connections disconnect)
     last_seen = models.DateTimeField(null=True, blank=True, help_text="Last time the user was seen online")
 

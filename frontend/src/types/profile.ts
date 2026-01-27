@@ -25,6 +25,8 @@ export type ProfileType = {
     is_self: boolean
     mutual_followers_count: number
     join_date: string
+    /** Prefers 'light' or 'dark'; default is 'light' */
+    theme?: 'light' | 'dark'
 }
 export type UpdateProfileInput = Partial<Omit<ProfileType,'username' | 'email' | 'avatar' >> & {
   avatarFile?: File
