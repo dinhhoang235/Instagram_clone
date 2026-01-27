@@ -232,7 +232,7 @@ export default function PostPage() {
                     handleAddComment()
                   }
                 }}
-                className="flex-1"
+                className="flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               {comment && (
                 <Button

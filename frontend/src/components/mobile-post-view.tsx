@@ -56,29 +56,29 @@ export default function MobilePostView(props: Props) {
   return (
     <div className="relative flex-1 flex flex-col">
       {/* Top Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 bg-gradient-to-b from-white/90 to-transparent">
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 bg-gradient-to-b from-background/90 to-transparent">
         <div className="flex items-center space-x-3">
           <Button variant="ghost" size="icon" className="p-0 h-auto hover:bg-transparent" onClick={onBack}>
-            <ChevronLeft className="w-6 h-6 text-black" />
+            <ChevronLeft className="w-6 h-6 text-foreground" />
           </Button>
           <div className="flex items-center space-x-2">
             <Avatar className="w-8 h-8">
               <AvatarImage src={post?.user?.avatar || "/placeholder.svg"} alt={post?.user?.username} />
               <AvatarFallback>{post?.user?.username?.slice(0, 2)?.toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="flex items-center text-black text-sm font-semibold">
+            <div className="flex items-center text-foreground text-sm font-semibold">
               <span>{post?.user?.username}</span>
               {post?.user?.isVerified && <BadgeCheck className="w-4 h-4 text-blue-400 ml-2" />}
             </div>
           </div>
         </div>
         <Button variant="ghost" size="icon" className="p-0 h-auto hover:bg-transparent">
-          <MoreHorizontal className="w-5 h-5 text-black" />
+          <MoreHorizontal className="w-5 h-5 text-foreground" />
         </Button>
       </div>
 
       {/* Image area */}
-      <div className="flex-1 bg-white flex items-center justify-center" onDoubleClick={onLike}>
+      <div className="flex-1 bg-background flex items-center justify-center" onDoubleClick={onLike}>
         <div className="w-full h-full relative">
           <Image src={post?.image || "/placeholder.svg"} alt="Post image" fill className="object-contain" />
 
@@ -91,42 +91,42 @@ export default function MobilePostView(props: Props) {
       </div>
 
       {/* Bottom overlay */}
-      <div className="absolute left-0 right-0 bottom-0 z-30 bg-gradient-to-t from-white/90 to-transparent p-4">
+      <div className="absolute left-0 right-0 bottom-0 z-30 bg-gradient-to-t from-background/90 to-transparent p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="sm" onClick={onLike} className="p-0 h-auto hover:bg-transparent">
-              <Heart className={`w-6 h-6 ${isLiked ? "fill-red-500 text-red-500" : "text-black"}`} />
+              <Heart className={`w-6 h-6 ${isLiked ? "fill-red-500 text-red-500" : "text-foreground"}`} />
             </Button>
             <Button variant="ghost" size="sm" onClick={onOpenComments} className="p-0 h-auto hover:bg-transparent">
-              <MessageCircle className="w-6 h-6 text-black" />
+              <MessageCircle className="w-6 h-6 text-foreground" />
             </Button>
             <Button variant="ghost" size="sm" className="p-0 h-auto hover:scale-110 transition-transform" onClick={onShare}>
-              <Send className="w-7 h-7 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+              <Send className="w-7 h-7 hover:text-muted-foreground transition-colors" />
             </Button>
           </div>
 
           <Button variant="ghost" size="sm" onClick={onSave} className="p-0 h-auto hover:bg-transparent">
-            <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current text-black" : "text-black"}`} />
+            <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current text-foreground" : "text-foreground"}`} />
           </Button>
         </div>
 
-        <div className="text-black font-semibold text-sm mb-1">{likes === 1 ? "1 like" : `${likes?.toLocaleString()} likes`}</div>
+        <div className="text-foreground font-semibold text-sm mb-1">{likes === 1 ? "1 like" : `${likes?.toLocaleString()} likes`}</div>
 
-        <div className="text-black text-sm mb-2">
+        <div className="text-foreground text-sm mb-2">
           <span className="font-semibold mr-2">{post?.user?.username}</span>
           <span className="line-clamp-2">{post?.caption}</span>
         </div>
 
-        <button className="text-sm text-black/70 mb-2" onClick={onOpenComments}>
+        <button className="text-sm text-muted-foreground mb-2" onClick={onOpenComments}>
           View all {post?.comments ?? 0} comments
         </button>
 
-        <div className="text-xs text-black/60 mb-2">{post?.timeAgo}</div>
+        <div className="text-xs text-muted-foreground mb-2">{post?.timeAgo}</div>
 
         {/* Comment input (compact) */}
         <div className="flex items-center space-x-2">
           <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9" onClick={onToggleEmoji}>
-            <Smile className="w-5 h-5 text-black" />
+            <Smile className="w-5 h-5 text-foreground" />
           </Button>
 
           <Input
@@ -140,7 +140,7 @@ export default function MobilePostView(props: Props) {
                 onAddComment()
               }
             }}
-            className="flex-1 border-0 bg-gray-100 text-black placeholder:text-black/60 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+            className="flex-1 border-0 bg-muted text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
           />
 
           {comment && (
