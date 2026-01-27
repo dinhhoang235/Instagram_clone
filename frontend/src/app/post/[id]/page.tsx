@@ -14,6 +14,7 @@ import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import type { EmojiClickData } from "emoji-picker-react"
+import { Theme as EmojiTheme } from "emoji-picker-react"
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
 import useIsDark from "@/lib/hooks/useIsDark"
 
@@ -253,7 +254,7 @@ export default function PostPage() {
                   ref={emojiPickerRef}
                   className="absolute bottom-12 left-0 z-50"
                 >
-                  <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+                  <EmojiPicker theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
                 </div>
               )}
             </div>
@@ -417,7 +418,7 @@ export default function PostPage() {
                       ref={emojiPickerRef}
                       className="absolute bottom-12 left-0 z-50"
                     >
-                      <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+                      <EmojiPicker theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
                     </div>
                   )}
                 </div>

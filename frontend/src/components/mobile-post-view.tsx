@@ -1,6 +1,7 @@
 import React from "react"
 import dynamic from "next/dynamic"
 import type { EmojiClickData } from "emoji-picker-react"
+import { Theme as EmojiTheme } from "emoji-picker-react"
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -154,7 +155,7 @@ export default function MobilePostView(props: Props) {
 
           {isEmojiOpen && (
             <div ref={emojiPickerRef} className="absolute bottom-20 left-4 z-50">
-              <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+              <EmojiPicker theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
             </div>
           )}
         </div>

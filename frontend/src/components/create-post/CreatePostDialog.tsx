@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageIcon, X, ChevronLeft, ChevronDown, ChevronRight, MapPin, UserPlus, Smile } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
-import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
+import EmojiPicker, { EmojiClickData, Theme as EmojiTheme } from "emoji-picker-react"
 import useIsDark from "@/lib/hooks/useIsDark"
 import Cropper from "react-easy-crop"
 import { getCroppedImg, readFileAsDataUrl } from "./utils"
@@ -366,7 +366,7 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                     Next
                   </button>
                 )}
-                {step === '' && (
+                {step === 'caption' && (
                   <button
                     className="text-sm font-semibold text-blue-500 hover:text-blue-400 transition-colors"
                     onClick={handleShare}
@@ -785,7 +785,7 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                           className="absolute top-12 left-0 z-50"
                         >
                           <EmojiPicker
-                            theme={isDark ? 'dark' : 'light'}
+                            theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT}
                             onEmojiClick={handleEmojiClick}
                             width={265}
                             height={160}

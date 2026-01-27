@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip, X } from "lucide-react"
 import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
-import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
+import EmojiPicker, { EmojiClickData, Theme as EmojiTheme } from "emoji-picker-react"
 import useIsDark from "@/lib/hooks/useIsDark"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
 import { deleteThread, sendMessageWithFile } from "@/lib/services/chats"
@@ -914,7 +914,7 @@ export function Chat({
               className="absolute bottom-12 left-0 z-50"
             >
               <EmojiPicker 
-                theme={isDark ? 'dark' : 'light'}
+                theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT}
                 onEmojiClick={handleEmojiClick}
                 width={325}
                 height={333}
