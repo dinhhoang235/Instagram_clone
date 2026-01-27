@@ -15,6 +15,7 @@ import Image from "next/image"
 import dynamic from "next/dynamic"
 import type { EmojiClickData } from "emoji-picker-react"
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
+import useIsDark from "@/lib/hooks/useIsDark"
 
 import { getPostById, likePost, savePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
@@ -53,6 +54,8 @@ export default function PostPage() {
     document.addEventListener("click", handleDocClick)
     return () => document.removeEventListener("click", handleDocClick)
   }, [isEmojiOpen])
+
+  const isDark = useIsDark()
 
   const toggleEmojiPicker = () => {
     setIsEmojiOpen(prev => !prev)
@@ -110,7 +113,7 @@ export default function PostPage() {
             <div className="max-w-4xl mx-auto px-4 py-8 pt-16 pb-20 lg:pt-8 lg:pb-8">
               <div className="text-center">
                 <h1 className="text-2xl font-bold mb-4">Post not found</h1>
-                <p className="text-muted-foreground">The post youre looking for doesnt exist.</p>
+                <p className="text-muted-foreground">The post you&apos;re looking for doesnt exist.</p>
               </div>
             </div>
           </main>
@@ -250,7 +253,7 @@ export default function PostPage() {
                   ref={emojiPickerRef}
                   className="absolute bottom-12 left-0 z-50"
                 >
-                  <EmojiPicker onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+                  <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
                 </div>
               )}
             </div>
@@ -414,7 +417,7 @@ export default function PostPage() {
                       ref={emojiPickerRef}
                       className="absolute bottom-12 left-0 z-50"
                     >
-                      <EmojiPicker onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+                      <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
                     </div>
                   )}
                 </div>

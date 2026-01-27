@@ -10,6 +10,7 @@ import { Phone, Video, Info, Smile, ImageIcon, Send, Heart, ArrowLeft, Paperclip
 import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
+import useIsDark from "@/lib/hooks/useIsDark"
 import { getMessages, createChatSocket, markConversationAsRead } from "@/lib/services/messages"
 import { deleteThread, sendMessageWithFile } from "@/lib/services/chats"
 import { useConversationStore } from "@/stores/useConversationStore"
@@ -134,6 +135,7 @@ export function Chat({
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const hasMarkedAsReadRef = useRef<boolean>(false) // Flag to prevent marking as read multiple times
   const emojiPickerRef = useRef<HTMLDivElement>(null)
+  const isDark = useIsDark()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const fileUploadRef = useRef<HTMLInputElement>(null)
   const [detectedPartnerId, setDetectedPartnerId] = useState<number | null>(null)
@@ -912,6 +914,7 @@ export function Chat({
               className="absolute bottom-12 left-0 z-50"
             >
               <EmojiPicker 
+                theme={isDark ? 'dark' : 'light'}
                 onEmojiClick={handleEmojiClick}
                 width={325}
                 height={333}

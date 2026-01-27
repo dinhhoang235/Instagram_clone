@@ -40,6 +40,7 @@ import React, { useEffect, useState } from "react"
 import { getMyProfile, updateMyProfile } from "@/lib/services/profile"
 import SearchDrawer from "@/components/search-drawer"
 import NotificationsDrawer from "@/components/notifications-drawer"
+import CreatePostDialog from "@/components/create-post/CreatePostDialog"
 
 type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement> & { className?: string }>
 const renderIcon = (Icon?: IconComponent, props?: React.SVGProps<SVGSVGElement>) => Icon ? <Icon {...props} /> : null
@@ -71,6 +72,9 @@ export function Sidebar() {
   const [navigation, setNavigation] = useState(getNavigation(""))
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+
+  // Create post dialog state (desktop)
+  const [createOpen, setCreateOpen] = useState(false)
 
   // Submenu state for "Switch appearance"
   const [appearanceOpen, setAppearanceOpen] = useState(false)
@@ -318,6 +322,28 @@ export function Sidebar() {
               )
             }
 
+            // Special handling for the Create button on desktop: open modal/dialog instead of navigating
+            if (item.name === "Create") {
+              return (
+                <button
+                  key={item.name}
+                  aria-label={item.name}
+                  onClick={() => { setCreateOpen(true); if (isSearchOpen) setIsSearchOpen(false) }}
+                  className={cn(
+                    "flex items-center px-3 py-3 text-sm font-medium rounded-lg hover:bg-muted transition-colors w-full text-left",
+                    isActive ? "bg-muted" : ""
+                  )}
+                >
+                  <div className="relative flex-shrink-0 w-6 flex justify-center"> 
+                    {renderIcon(item.icon, { className: cn("w-6 h-6", isActive ? "fill-current" : "") })}
+                  </div>
+                  <span className={cn("ml-4 whitespace-nowrap transition-all duration-200 ease-in-out", isMoreOpen ? "lg:opacity-100 lg:w-auto lg:overflow-visible" : "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:group-hover:opacity-100 lg:group-hover:w-auto")}> 
+                    {item.name}
+                  </span>
+                </button>
+              )
+            }
+
             return (
               <Link
                 key={item.name}
@@ -451,6 +477,9 @@ export function Sidebar() {
 
       {/* Notifications Drawer (opens beside sidebar) */}
       <NotificationsDrawer isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} sidebarIsCollapsed={isSidebarCollapsed} sidebarIsHidden={isSidebarCollapsed} />
+
+      {/* Create Post Dialog (desktop) */}
+      <CreatePostDialog open={createOpen} onOpenChange={(isOpen: boolean) => setCreateOpen(isOpen)} />
 
       {/* Mobile Bottom Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ChevronLeft, BadgeCheck, Smile } from "lucide-react"
 import Image from "next/image"
 import type { PostType } from "@/types/post"
+import useIsDark from "@/lib/hooks/useIsDark"
 
 type Props = {
   post?: PostType | null
@@ -52,6 +53,8 @@ export default function MobilePostView(props: Props) {
     onAddComment,
     onSetComment,
   } = props
+
+  const isDark = useIsDark()
 
   return (
     <div className="relative flex-1 flex flex-col">
@@ -151,7 +154,7 @@ export default function MobilePostView(props: Props) {
 
           {isEmojiOpen && (
             <div ref={emojiPickerRef} className="absolute bottom-20 left-4 z-50">
-              <EmojiPicker onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+              <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
             </div>
           )}
         </div>

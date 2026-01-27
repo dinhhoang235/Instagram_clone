@@ -12,6 +12,7 @@ import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import type { EmojiClickData } from "emoji-picker-react"
+import useIsDark from "@/lib/hooks/useIsDark"
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
 
@@ -42,6 +43,7 @@ export default function PostModal() {
   // Emoji picker state
   const [isEmojiOpen, setIsEmojiOpen] = useState(false)
   const emojiPickerRef = useRef<HTMLDivElement | null>(null)
+  const isDark = useIsDark()
 
   // Mobile: toggle between full post view and comments panel
   const searchParams = useSearchParams()
@@ -246,7 +248,7 @@ export default function PostModal() {
                     ref={emojiPickerRef}
                     className="absolute bottom-12 left-0 z-50"
                   >
-                    <EmojiPicker onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+                    <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
                   </div>
                 )} 
               </div>
@@ -396,7 +398,7 @@ export default function PostModal() {
 
                 {isEmojiOpen && (
                   <div ref={emojiPickerRef} className="absolute bottom-12 left-0 z-50">
-                    <EmojiPicker onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
+                    <EmojiPicker theme={isDark ? 'dark' : 'light'} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
                   </div>
                 )}
               </div>
