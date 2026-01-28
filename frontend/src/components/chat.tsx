@@ -826,20 +826,21 @@ export function Chat({
             )}
             <div className={`flex flex-col ${msg.isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
               {msg.shared_post ? (
-                <div className={`mb-2 rounded-xl overflow-hidden border ${msg.isOwn ? 'border-blue-300' : 'border-zinc-200 dark:border-zinc-800'} max-w-[360px] w-full`}>
-                  <Link href={`/post/${msg.shared_post.id}`} className="flex items-start gap-3 p-3 w-full">
-                    <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                <div className={`mb-2 rounded-xl overflow-hidden border ${msg.isOwn ? 'border-blue-300' : 'border-zinc-200 dark:border-zinc-800'} w-[min(262px,86vw)]`}>
+                  {/* Fixed width, auto height; image max 262x400 */}
+                  <Link href={`/post/${msg.shared_post.id}`} className="flex flex-col items-stretch gap-2 p-2 box-border w-full">
+                    <div className="w-full max-h-[400px] flex items-center justify-center overflow-hidden rounded-md bg-muted">
                       {msg.shared_post.image ? (
                         // Use next/image when possible
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={msg.shared_post.image} alt="post-thumbnail" className="w-full h-full object-cover" />
+                        <img src={msg.shared_post.image} alt="post-thumbnail" className="max-w-[262px] max-h-[400px] object-contain" />
                       ) : (
                         <div className="w-full h-full bg-gray-200" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex flex-col justify-start py-2">
                       <div className="text-sm font-medium">{msg.shared_post.username}</div>
-                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2 ">{msg.shared_post.caption}</div>
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">{msg.shared_post.caption}</div>
                     </div>
                   </Link>
                 </div>
