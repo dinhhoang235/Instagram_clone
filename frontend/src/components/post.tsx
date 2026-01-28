@@ -204,20 +204,26 @@ export function Post({ post, priority = false }: PostProps) {
               </button>
             )}
 
-            {/* Pagination dots */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
-              {images.map((img, idx) => (
-                <button
-                  key={img.id}
-                  aria-label={`Go to photo ${idx + 1}`}
-                  onClick={() => setCurrentIndex(idx)}
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${currentIndex === idx ? 'bg-blue-500' : 'bg-muted/40'}`}
-                />
-              ))}
-            </div>
+
           </>
         )}
       </div>
+
+      {/* Pagination dots (moved below the image) */}
+      {images.length > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-2 mb-4">
+          {images.map((img, idx) => (
+            <button
+              key={img.id}
+              aria-label={`Go to photo ${idx + 1}`}
+              title={`Go to photo ${idx + 1}`}
+              aria-current={currentIndex === idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`w-1.5 h-1.5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${currentIndex === idx ? 'bg-blue-600 shadow-md' : 'bg-gray-300 dark:bg-gray-600'}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Post Actions */}
       <CardContent className="p-4">
