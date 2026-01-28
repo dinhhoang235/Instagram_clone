@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from posts.models import Post, Tag
+from posts.models import Post, Tag, PostImage
 from django.contrib.auth.models import User
 import re
 
@@ -29,22 +29,52 @@ class PostUserSerializer(serializers.ModelSerializer):
         return obj.posts.count()
 
 
+class PostImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PostImage
+        fields = ['id', 'image', 'order', 'alt_text']
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        url = obj.image.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+
+
 class PostSerializer(serializers.ModelSerializer):
     user = PostUserSerializer(read_only=True)
     likes = serializers.IntegerField(source='likes_count', read_only=True)
     comments = serializers.IntegerField(source='comments_count', read_only=True)
     timeAgo = serializers.CharField(source='time_ago', read_only=True)
     hashtags = serializers.SerializerMethodField()
-    image = serializers.ImageField()
+    images = PostImageSerializer(many=True, read_only=True, source='post_images')
+    image = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
-            'id', 'user', 'image', 'caption', 'hashtags',
-            'likes', 'is_liked', 'is_saved', 'comments', 'timeAgo', 'location'
+            'id', 'user', 'image', 'images', 'caption', 'hashtags',
+            'likes', 'is_liked', 'is_saved', 'comments', 'timeAgo', 'location', 'hide_likes', 'disable_comments'
         ]
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        # prefer first PostImage if exists
+        first = obj.post_images.order_by('order').first()
+        if first:
+            url = first.image.url
+        elif obj.image:
+            url = obj.image.url
+        else:
+            return None
+        if request:
+            return request.build_absolute_uri(url)
+        return url
 
     def get_is_saved(self, obj):
         request = self.context.get("request")

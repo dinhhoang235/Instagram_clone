@@ -1,9 +1,8 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
-from posts.models import Post
+from posts.models import Post, Tag, PostImage
 from posts.serializers import PostSerializer
 from rest_framework.response import Response
-from posts.models import Tag
 from posts.serializers import TagSerializer
 from django.db.models import Count
 
@@ -12,7 +11,7 @@ class PostViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
     def get_queryset(self):
-        queryset = Post.objects.all().select_related('user', 'user__profile').prefetch_related('tags', 'likes')
+        queryset = Post.objects.all().select_related('user', 'user__profile').prefetch_related('tags', 'likes', 'post_images')
         user = self.request.query_params.get('user')
         if user:
             queryset = queryset.filter(user__username=user)
@@ -23,6 +22,45 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        import json
+
+        files = request.FILES.getlist('image')
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        post = serializer.save(user=request.user)
+
+        # parse additional fields from request.data
+        alt_texts_raw = request.data.get('alt_texts')
+        alt_texts = None
+        if alt_texts_raw:
+            try:
+                alt_texts = json.loads(alt_texts_raw)
+            except Exception:
+                alt_texts = None
+
+        hide_likes_raw = request.data.get('hide_likes')
+        disable_comments_raw = request.data.get('disable_comments')
+        if hide_likes_raw is not None:
+            post.hide_likes = str(hide_likes_raw).lower() in ('1', 'true', 'yes')
+        if disable_comments_raw is not None:
+            post.disable_comments = str(disable_comments_raw).lower() in ('1', 'true', 'yes')
+        post.save()
+
+        # Create PostImage objects for each uploaded file
+        for i, f in enumerate(files):
+            alt = None
+            if isinstance(alt_texts, list) and i < len(alt_texts):
+                alt = alt_texts[i]
+            pi = PostImage.objects.create(post=post, image=f, order=i, alt_text=alt)
+            # set main image if not already set
+            if i == 0 and not post.image:
+                post.image = pi.image
+                post.save(update_fields=['image'])
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(self.get_serializer(post, context=self.get_serializer_context()).data, status=201, headers=headers)
         
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def feed(self, request):

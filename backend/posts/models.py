@@ -7,7 +7,21 @@ from django.contrib.auth.models import User
 from django.utils.timesince import timesince
 
 def user_directory_path(instance, filename):
-    return f'user_{instance.user.id}/posts/{filename}'
+    """Return upload path for images.
+
+    Supports both Post (has .user) and PostImage (has .post which has .user).
+    """
+    try:
+        # Post instance
+        user_id = instance.user.id
+    except Exception:
+        try:
+            # PostImage instance
+            user_id = instance.post.user.id
+        except Exception:
+            user_id = 'unknown'
+
+    return f'user_{user_id}/posts/{filename}'
 
 class Post(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -17,6 +31,10 @@ class Post(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     posted = models.DateTimeField(auto_now_add=True)
     likes = models.ManyToManyField(User, related_name='liked_posts', blank=True)
+
+    # privacy / controls
+    hide_likes = models.BooleanField(default=False)
+    disable_comments = models.BooleanField(default=False)
     
     tags = models.ManyToManyField("Tag", through="PostTag", related_name="posts")
 
@@ -68,3 +86,16 @@ class PostTag(models.Model):
 
     class Meta:
         unique_together = ("post", "tag")  # tránh gán trùng tag cho 1 post
+
+
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, related_name='post_images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to=user_directory_path)
+    order = models.PositiveIntegerField(default=0)
+    alt_text = models.CharField(max_length=1024, blank=True, null=True)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"Image for {self.post.id} ({self.order})"

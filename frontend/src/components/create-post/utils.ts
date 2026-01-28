@@ -35,9 +35,4 @@ export async function getCroppedImg(imageSrc: string, pixelCrop: { x: number; y:
   })
 }
 
-export const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader()
-  reader.onload = () => resolve(reader.result as string)
-  reader.onerror = reject
-  reader.readAsDataURL(file)
-})
+

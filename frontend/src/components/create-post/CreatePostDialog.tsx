@@ -5,15 +5,18 @@ import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from "@/components/u
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { ImageIcon, X, ChevronLeft, ChevronDown, ChevronRight, MapPin, UserPlus, Smile } from "lucide-react"
+import { ImageIcon, X, ChevronLeft, ChevronDown, ChevronRight, MapPin, Smile } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import EmojiPicker, { EmojiClickData, Theme as EmojiTheme } from "emoji-picker-react"
 import useIsDark from "@/lib/hooks/useIsDark"
 import Cropper from "react-easy-crop"
-import { getCroppedImg, readFileAsDataUrl } from "./utils"
+import { getCroppedImg } from "./utils"
 import { createPost } from "@/lib/services/posts"
+import { getMyProfile } from "@/lib/services/profile"
+import type { ProfileType } from "@/types/profile"
 import { toast } from "sonner"
 import Image from "next/image"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 type UploadItem = {
@@ -22,6 +25,11 @@ type UploadItem = {
   dataUrl: string
   croppedFile?: File
   previewUrl?: string
+  // Per-image crop state
+  crop?: { x: number; y: number }
+  zoom?: number
+  aspect?: number
+  croppedAreaPixels?: { x: number; y: number; width: number; height: number } | null
 }
 
 interface CreatePostDialogProps {
@@ -33,6 +41,7 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
   const [step, setStep] = useState<'select' | 'crop' | 'caption'>('select')
   const [files, setFiles] = useState<UploadItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const galleryRef = useRef<HTMLDivElement | null>(null)
   const zoomRef = useRef<HTMLDivElement | null>(null)
@@ -43,12 +52,10 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [aspect, setAspect] = useState<number>(1)
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x:number; y:number; width:number; height:number } | null>(null)
 
   // caption / location
   const [captionText, setCaptionText] = useState("")
   const [locationText, setLocationText] = useState("")
-  const [collaboratorsText, setCollaboratorsText] = useState("")
   const [showAspectMenu, setShowAspectMenu] = useState(false)
   const [showZoomSlider, setShowZoomSlider] = useState(false)
   const [showGallery, setShowGallery] = useState(false)
@@ -67,22 +74,38 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
   const isDark = useIsDark()
   const categoryNavVar = '--epr-category-navigation-button-size'
 
+  // upload state
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+
+  // current user
+  const [currentUser, setCurrentUser] = useState<ProfileType | null>(null)
+
   // discard confirmation
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  // callback to run when user confirms discard (allows different discard behaviors)
+  const discardActionRef = useRef<(() => void) | null>(null)
 
   const hasUnsavedChanges = () => {
     if (files.length > 0) return true
     if (captionText.trim() !== '') return true
     if (locationText.trim() !== '') return true
-    if (collaboratorsText.trim() !== '') return true
     if (Object.values(altTexts).some(Boolean)) return true
     if (hideLikes || disableComments) return true
     return false
   }
 
   const handleDialogOpenChange = (next: boolean) => {
+    if (isUploading) {
+      // prevent closing while uploading
+      toast('Upload in progress', { icon: '⏳' })
+      return
+    }
+
     if (!next) {
       if (hasUnsavedChanges()) {
+        // set discard action to close the dialog for this case
+        discardActionRef.current = () => onOpenChange(false)
         setShowDiscardConfirm(true)
         return
       }
@@ -94,6 +117,11 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
 
   useEffect(() => {
     if (!open) setShowDiscardConfirm(false)
+
+    if (open) {
+      // fetch current profile when dialog opens to get avatar
+      getMyProfile().then((p) => setCurrentUser(p)).catch(() => setCurrentUser(null))
+    }
   }, [open])
 
   const handleEmojiClick = (data: EmojiClickData) => {
@@ -130,6 +158,14 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
       const current = previewUrlsRef.current
       current.forEach((url) => { try { URL.revokeObjectURL(url) } catch {} })
       current.clear()
+
+      // clear hidden file input so browser doesn't retain file list
+      try {
+        if (fileInputRef.current) (fileInputRef.current as HTMLInputElement).value = ''
+      } catch {
+        // ignore
+      }
+
       setStep('select')
       setFiles([])
       setCurrentIndex(0)
@@ -138,7 +174,6 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
       setCrop({ x: 0, y: 0 })
       setZoom(1)
       setAspect(1)
-      setCroppedAreaPixels(null)
       setShowAspectMenu(false)
       setShowZoomSlider(false)
       setShowGallery(false)
@@ -174,49 +209,131 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
     if (!selectedFiles) return
     const arr = Array.from(selectedFiles)
     const items: UploadItem[] = await Promise.all(arr.map(async (file) => {
-      const dataUrl = await readFileAsDataUrl(file)
+      const dataUrl = URL.createObjectURL(file)
+      previewUrlsRef.current.add(dataUrl)
       const id = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`
-      return { id, file, dataUrl }
+      return { id, file, dataUrl, crop: { x: 0, y: 0 }, zoom: 1, aspect: 1, croppedAreaPixels: null }
     }))
-    setFiles((v) => [...v, ...items])
+
+    // Append new items and stay on the currently selected image (do not auto-switch)
+    setFiles((prev) => {
+      return [...prev, ...items]
+    })
+
     setStep('crop')
-    setCurrentIndex(files.length)
   }
 
   const onCropComplete = useCallback((_: { x:number; y:number }, croppedAreaPixelsLocal: { x:number; y:number; width:number; height:number }) => {
-    setCroppedAreaPixels(croppedAreaPixelsLocal)
-  }, [])
+    setFiles(prev => {
+      const next = [...prev]
+      if (!next[currentIndex]) return prev
+      next[currentIndex] = { ...next[currentIndex], croppedAreaPixels: croppedAreaPixelsLocal }
+      return next
+    })
+  }, [currentIndex])
 
-  const applyCropForCurrent = async () => {
-    const item = files[currentIndex]
-    if (!item || !croppedAreaPixels) return
+  // Helpers to persist crop/zoom/aspect per-file
+  const setCropAndSave = (c: { x: number; y: number }) => {
+    setCrop(c)
+    setFiles(prev => {
+      const next = [...prev]
+      if (!next[currentIndex]) return prev
+      next[currentIndex] = { ...next[currentIndex], crop: c }
+      return next
+    })
+  }
+
+  const setZoomAndSave = (z: number) => {
+    setZoom(z)
+    setFiles(prev => {
+      const next = [...prev]
+      if (!next[currentIndex]) return prev
+      next[currentIndex] = { ...next[currentIndex], zoom: z }
+      return next
+    })
+  }
+
+  const setAspectAndSave = (a: number) => {
+    setAspect(a)
+    setFiles(prev => {
+      const next = [...prev]
+      if (!next[currentIndex]) return prev
+      next[currentIndex] = { ...next[currentIndex], aspect: a }
+      return next
+    })
+  }
+
+  const applyCropForIndex = useCallback(async (index: number) => {
+    const item = files[index]
+    if (!item || !item.croppedAreaPixels) return
     try {
-      const blob = await getCroppedImg(item.dataUrl, croppedAreaPixels)
+      const blob = await getCroppedImg(item.dataUrl, item.croppedAreaPixels)
       const croppedFile = new File([blob], item.file.name, { type: blob.type })
 
-      // revoke previous preview if present
+      // revoke previous cropped preview if present
       if (item.previewUrl) {
         try { URL.revokeObjectURL(item.previewUrl) } catch {}
         previewUrlsRef.current.delete(item.previewUrl)
       }
 
+      // revoke original dataUrl (blob URL) now that we've replaced it with cropped preview
+      if (item.dataUrl) {
+        try { URL.revokeObjectURL(item.dataUrl) } catch {}
+        previewUrlsRef.current.delete(item.dataUrl)
+      }
+
       const previewUrl = URL.createObjectURL(croppedFile)
       previewUrlsRef.current.add(previewUrl)
 
-      const newFiles = [...files]
-      newFiles[currentIndex] = { ...item, croppedFile, previewUrl }
-      setFiles(newFiles)
+      setFiles(prev => {
+        const next = [...prev]
+        next[index] = { ...next[index], croppedFile, previewUrl, dataUrl: previewUrl }
+        return next
+      })
     } catch (err) {
       console.error(err)
       toast.error('Crop failed')
     }
+  }, [files])
+
+  const applyCropForCurrent = async () => {
+    return applyCropForIndex(currentIndex)
   }
+
+  // When switching between images, auto-apply the previous crop (if present) and restore state for the newly selected image
+  const prevIndexRef = useRef<number>(currentIndex)
+  useEffect(() => {
+    const prev = prevIndexRef.current
+    if (prev !== currentIndex) {
+      const prevItem = files[prev]
+      if (prevItem && prevItem.croppedAreaPixels && !prevItem.croppedFile) {
+        applyCropForIndex(prev)
+      }
+
+      const cur = files[currentIndex]
+      if (cur) {
+        setCrop(cur.crop || { x: 0, y: 0 })
+        setZoom(cur.zoom ?? 1)
+        setAspect(cur.aspect ?? 1)
+      } else {
+        setCrop({ x: 0, y: 0 })
+        setZoom(1)
+        setAspect(1)
+      }
+
+      prevIndexRef.current = currentIndex
+    }
+  }, [currentIndex, files, applyCropForIndex])
 
   const removeFile = (id: string) => {
     const removed = files.find(f => f.id === id)
     if (removed?.previewUrl) {
       try { URL.revokeObjectURL(removed.previewUrl) } catch {}
       previewUrlsRef.current.delete(removed.previewUrl)
+    }
+    if (removed?.dataUrl) {
+      try { URL.revokeObjectURL(removed.dataUrl) } catch {}
+      previewUrlsRef.current.delete(removed.dataUrl)
     }
 
     const newFiles = files.filter(f => f.id !== id)
@@ -235,7 +352,7 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
       if (files.length === 0) return toast.error('Choose at least one photo')
       setStep('crop')
     } else if (step === 'crop') {
-      if (croppedAreaPixels) await applyCropForCurrent()
+      if (files[currentIndex]?.croppedAreaPixels) await applyCropForCurrent()
       setStep('caption')
     }
   }
@@ -244,7 +361,16 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
     if (step === 'caption') {
       setStep('crop')
     } else if (step === 'crop') {
-      setStep('select')
+      // if there are files present, confirm discard before going back to select
+      if (files.length > 0) {
+        discardActionRef.current = () => {
+          setFiles([])
+          setStep('select')
+        }
+        setShowDiscardConfirm(true)
+      } else {
+        setStep('select')
+      }
     }
   }
 
@@ -258,13 +384,42 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
     fd.append('caption', captionText)
     fd.append('location', locationText)
 
+    // alt texts ordered same as files
+    const orderedAlts = files.map((f) => altTexts[f.id] || '')
+    fd.append('alt_texts', JSON.stringify(orderedAlts))
+
+    // privacy flags
+    fd.append('hide_likes', hideLikes ? 'true' : 'false')
+    fd.append('disable_comments', disableComments ? 'true' : 'false')
+
+    setIsUploading(true)
+    setUploadProgress(0)
+
     try {
-      await createPost(fd)
+      const created = await createPost(fd, {
+        onUploadProgress: (event: ProgressEvent) => {
+          if (event.total) {
+            const percent = Math.round((event.loaded / event.total) * 100)
+            setUploadProgress(percent)
+          }
+        }
+      })
+
+      // Notify other parts of the app so feed can update immediately
+      try {
+        window.dispatchEvent(new CustomEvent('postCreated', { detail: { post: created } }))
+      } catch {
+        // ignore if dispatch fails
+      }
+
       toast.success('Posted')
       onOpenChange(false)
     } catch (err) {
       console.error(err)
       toast.error('Failed to create post')
+    } finally {
+      setIsUploading(false)
+      setTimeout(() => setUploadProgress(null), 400)
     }
   }
 
@@ -279,17 +434,21 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
           accept="image/*,video/*"
           multiple
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => { if (!isUploading) handleFiles(e.target.files) }}
+          disabled={isUploading}
         />
         
         {/* Close button outside modal */}
         <button
-          onClick={() => handleDialogOpenChange(false)}
-          className="fixed top-4 right-4 z-[100] text-foreground hover:opacity-70 transition-opacity"
+          onClick={() => { if (!isUploading) handleDialogOpenChange(false) }}
+          className={`fixed top-4 right-4 z-[100] text-foreground hover:opacity-70 transition-opacity ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
           aria-label="Close"
+          disabled={isUploading}
         >
           <X className="w-8 h-8" strokeWidth={1.5} />
         </button>
+
+
 
         {/* Discard confirmation modal (Radix Dialog for proper focus/interaction) */}
         <Dialog open={showDiscardConfirm} onOpenChange={(v) => setShowDiscardConfirm(v)}>
@@ -308,14 +467,27 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
               <div className="flex flex-col">
                 <button
                   className="text-red-500 font-semibold py-3 border-t border-border"
-                  onClick={() => { setShowDiscardConfirm(false); onOpenChange(false) }}
+                  onClick={() => {
+                    setShowDiscardConfirm(false)
+                    // run whichever discard action was registered (close dialog or clear files)
+                    try {
+                      if (discardActionRef.current) {
+                        discardActionRef.current()
+                      }
+                    } finally {
+                      discardActionRef.current = null
+                    }
+                  }}
                 >
                   Discard
                 </button>
 
                 <button
                   className="py-3"
-                  onClick={() => setShowDiscardConfirm(false)}
+                  onClick={() => {
+                    setShowDiscardConfirm(false)
+                    discardActionRef.current = null
+                  }}
                 >
                   Cancel
                 </button>
@@ -362,19 +534,29 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                   <button
                     className="text-sm font-semibold text-blue-500 hover:text-blue-400 transition-colors"
                     onClick={handleNext}
+                    disabled={isUploading}
+                    aria-disabled={isUploading}
                   >
                     Next
                   </button>
                 )}
                 {step === 'caption' && (
                   <button
-                    className="text-sm font-semibold text-blue-500 hover:text-blue-400 transition-colors"
+                    className={`text-sm font-semibold text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-2 ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     onClick={handleShare}
+                    disabled={isUploading}
+                    aria-disabled={isUploading}
                   >
-                    Share
+                    {isUploading ? (
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" strokeDasharray="31.4 31.4" />
+                      </svg>
+                    ) : null}
+
+                    <span>{isUploading ? 'Posting…' : 'Share'}</span>
                   </button>
                 )}
-              </div>
+              </div> 
             </div>
 
             {/* Content */}
@@ -403,8 +585,8 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                       crop={crop}
                       zoom={zoom}
                       aspect={aspect === 0 ? undefined : aspect}
-                      onCropChange={setCrop}
-                      onZoomChange={setZoom}
+                      onCropChange={setCropAndSave}
+                      onZoomChange={setZoomAndSave}
                       onCropComplete={onCropComplete}
                     />
 
@@ -427,24 +609,62 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                           {/* Gallery grid */}
                           <div className="bg-background/95 backdrop-blur-sm rounded-2xl p-3 flex flex-wrap gap-2 max-w-[200px] shadow-xl">
                             {files.map((file, idx) => (
-                              <div key={file.id} className="relative group">
+                              <div key={file.id} className="relative">
                                 <button
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.dataTransfer?.setData('text/plain', String(idx))
+                                    e.dataTransfer!.effectAllowed = 'move'
+                                    setDragIndex(idx)
+                                  }}
+                                  onDragEnd={() => setDragIndex(null)}
+                                  onDragOver={(e) => e.preventDefault()}
+                                  onDrop={(e) => {
+                                    e.preventDefault()
+                                    const srcStr = e.dataTransfer?.getData('text/plain')
+                                    const src = srcStr ? Number(srcStr) : -1
+                                    if (src < 0 || src === idx) {
+                                      setDragIndex(null)
+                                      return
+                                    }
+
+                                    setFiles((prev) => {
+                                      const next = [...prev]
+                                      const [moved] = next.splice(src, 1)
+                                      next.splice(idx, 0, moved)
+
+                                      // update currentIndex to keep the same selected file visible
+                                      const curId = prev[currentIndex]?.id
+                                      const newCurrent = curId ? next.findIndex(f => f.id === curId) : 0
+                                      setCurrentIndex(newCurrent === -1 ? 0 : newCurrent)
+
+                                      return next
+                                    })
+
+                                    setDragIndex(null)
+                                  }}
                                   onClick={() => setCurrentIndex(idx)}
-                                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                                    currentIndex === idx ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'
+                                  aria-pressed={currentIndex === idx}
+                                  className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                                    currentIndex === idx ? 'border-white opacity-100' : (dragIndex === idx ? 'opacity-30' : 'border-transparent opacity-60')
                                   }`}
                                 >
                                   <Image src={file.dataUrl} alt="" fill className="object-cover" />
                                 </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    removeFile(file.id)
-                                  }}
-                                  className="absolute -top-2 -right-2 w-6 h-6 bg-black rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-white/20"
-                                >
-                                  <X className="w-4 h-4 text-foreground" />
-                                </button>
+
+                                {/* Show remove button only for the currently selected thumbnail */}
+                                {currentIndex === idx && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      removeFile(file.id)
+                                    }}
+                                    className="absolute -top-2 -right-2 w-6 h-6 bg-black/80 rounded-full flex items-center justify-center opacity-100 transition-transform hover:scale-105 border border-white/20"
+                                    aria-label="Remove photo"
+                                  >
+                                    <X className="w-4 h-4 text-foreground" />
+                                  </button>
+                                )}
                               </div>
                             ))}
                             
@@ -498,7 +718,7 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                                 className={`w-full px-4 py-3 text-left text-sm hover:bg-muted/10 transition-colors flex items-center gap-3 ${
                                   aspect === 0 ? 'text-foreground' : 'text-muted-foreground'
                                 }`}
-                                onClick={() => { setAspect(0); setShowAspectMenu(false) }}
+                                onClick={() => { setAspectAndSave(0); setShowAspectMenu(false) }}
                               >
                                 <svg
                                   aria-label="Photo outline icon"
@@ -754,10 +974,15 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
               {step === 'caption' && (
                 <div className="w-[340px] bg-background border-l border-border flex flex-col">
                   <div className="p-4 flex items-center gap-3 border-b border-border">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 p-[2px]">
-                      <div className="w-full h-full rounded-full bg-background" />
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">dinhhoang235</span>
+                    <Avatar className="w-7 h-7">
+                    {currentUser?.avatar ? (
+                      <AvatarImage src={currentUser.avatar} alt={currentUser.username} />
+                    ) : (
+                      <AvatarFallback>{currentUser?.username?.charAt(0).toUpperCase() ?? 'D'}</AvatarFallback>
+                    )}
+                  </Avatar>
+
+                  <span className="text-sm font-semibold text-foreground">{currentUser?.username ?? 'dinhhoang235'}</span>
                   </div>
 
                   <div className="flex-1 overflow-y-auto">
@@ -767,6 +992,15 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                       onChange={(e) => setCaptionText(e.target.value)}
                       className="w-full min-h-[180px] bg-transparent border-0 text-foreground placeholder:text-muted-foreground resize-none p-4 ring-0 focus:ring-0 focus-visible:ring-0 ring-offset-0 focus:ring-offset-0 focus-visible:ring-offset-0"
                     />
+
+                    {uploadProgress !== null && (
+                      <div className="px-4 pt-2">
+                        <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+                          <div className="h-2 bg-blue-500" style={{ width: `${uploadProgress}%` }} />
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">Uploading: {uploadProgress}%</div>
+                      </div>
+                    )}
                     
                     <div className="px-4 pb-3 flex items-center justify-between border-b border-border relative">
                       <button
@@ -820,19 +1054,6 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
                             className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground outline-none"
                           />
                           <MapPin className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-3 rounded-lg px-2 py-1 transition-colors">
-                          <input
-                            type="text"
-                            placeholder="Add collaborators"
-                            value={collaboratorsText}
-                            onChange={(e) => setCollaboratorsText(e.target.value)}
-                            className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground outline-none"
-                          />
-                          <UserPlus className="w-4 h-4 text-muted-foreground" />
                         </div>
                       </div>
 

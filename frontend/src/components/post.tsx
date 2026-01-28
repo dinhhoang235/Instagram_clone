@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeCheck } from "lucide-react"
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 import { PostType } from "@/types/post"
@@ -18,21 +18,32 @@ import { useToast } from "@/components/ui/use-toast"
 
 interface PostProps {
   post: PostType
+  priority?: boolean
 }
 
-export function Post({ post }: PostProps) {
+export function Post({ post, priority = false }: PostProps) {
   const [isLiked, setIsLiked] = useState(post.is_liked)
   const [isSaved, setIsSaved] = useState(post.is_saved || false)
   const [likes, setLikes] = useState(post.likes)
   const [comments, setComments] = useState(post.comments)
   const [isAnimating, setIsAnimating] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
   const router = useRouter()
   const { toast } = useToast()
   const [isShareOpen, setIsShareOpen] = useState(false)
   
   const MAX_CAPTION_LENGTH = 25
   const shouldTruncate = post.caption && post.caption.length > MAX_CAPTION_LENGTH
+
+  // compute images array (backwards compatible)
+  const images = (post.images && post.images.length > 0)
+    ? post.images.sort((a,b) => a.order - b.order)
+    : [{ id: 'main', image: post.image, order: 0 }]
+
+  useEffect(() => {
+    setCurrentIndex(0)
+  }, [post.id])
 
   // Update comments count when post prop changes
   useEffect(() => {
@@ -161,13 +172,50 @@ export function Post({ post }: PostProps) {
         className="relative aspect-square select-none"
         onDoubleClick={handleDoubleClick}
       >
-        <Image src={post.image || "/placeholder.svg"} alt="Post image" fill className="object-cover" />
+        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill priority={priority} className="object-contain object-center bg-background" />
 
         {/* Double-tap heart animation */}
         {isAnimating && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <Heart className="w-24 h-24 text-red-500 fill-red-500 animate-[heartPop_0.6s_ease-out]" />
           </div>
+        )}
+
+        {/* Navigation buttons */}
+        {images.length > 1 && (
+          <>
+            {currentIndex > 0 && (
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
+                onClick={() => setCurrentIndex(currentIndex - 1)}
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            {currentIndex < images.length - 1 && (
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
+                onClick={() => setCurrentIndex(currentIndex + 1)}
+                aria-label="Next photo"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Pagination dots */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+              {images.map((img, idx) => (
+                <button
+                  key={img.id}
+                  aria-label={`Go to photo ${idx + 1}`}
+                  onClick={() => setCurrentIndex(idx)}
+                  className={`w-1.5 h-1.5 rounded-full transition-colors ${currentIndex === idx ? 'bg-blue-500' : 'bg-muted/40'}`}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 

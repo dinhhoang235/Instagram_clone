@@ -9,7 +9,7 @@ import { redirect } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ChevronLeft, BadgeCheck, Smile } from "lucide-react"
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ChevronLeft, ChevronRight, BadgeCheck, Smile } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
@@ -40,6 +40,7 @@ export default function PostPage() {
   const [isAnimating, setIsAnimating] = useState(false)
   const commentInputRef = useRef<HTMLInputElement>(null)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
   const { toast } = useToast()
 
   // Emoji picker state
@@ -104,6 +105,22 @@ export default function PostPage() {
 
     fetchPost()
   }, [postId])
+
+  useEffect(() => {
+    setCurrentIndex(0)
+  }, [post?.id])
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!post) return
+      const length = (post.images && post.images.length) ? post.images.length : (post.image ? 1 : 0)
+      if (length <= 1) return
+      if (e.key === 'ArrowLeft') setCurrentIndex(i => Math.max(i - 1, 0))
+      if (e.key === 'ArrowRight') setCurrentIndex(i => Math.min(i + 1, length - 1))
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [post])
 
   if (!post) {
     return (
@@ -270,25 +287,70 @@ export default function PostPage() {
               onDoubleClick={handleDoubleClick}
             >
               <div className="relative w-full aspect-square flex items-center justify-center">
-                <Image
-                  src={post.image || "/placeholder.svg"}
-                  alt="Post image"
-                  width={600}
-                  height={600}
-                  className="object-contain w-full h-full"
-                  priority
-                />
+                {post && (
+                  (() => {
+                    const images = post.images && post.images.length > 0 ? [...post.images].sort((a, b) => a.order - b.order) : [{ id: 'main', image: post.image, order: 0, alt_text: post.caption }]
 
-                {/* Double-tap heart animation */}
-                {isAnimating && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <Heart
-                      className="w-24 h-24 text-white fill-white"
-                      style={{
-                        animation: "heartPop 0.6s ease-out",
-                      }}
-                    />
-                  </div>
+                    return (
+                      <>
+                        <Image
+                          src={images[currentIndex].image || "/placeholder.svg"}
+                          alt={images[currentIndex].alt_text || 'Post image'}
+                          width={600}
+                          height={600}
+                          className="object-contain w-full h-full"
+                          priority
+                        />
+
+                        {/* Double-tap heart animation */}
+                        {isAnimating && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <Heart
+                              className="w-24 h-24 text-white fill-white"
+                              style={{
+                                animation: "heartPop 0.6s ease-out",
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {images.length > 1 && (
+                          <>
+                            {currentIndex > 0 && (
+                              <button
+                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-foreground transition-colors"
+                                onClick={() => setCurrentIndex(currentIndex - 1)}
+                                aria-label="Previous photo"
+                              >
+                                <ChevronLeft className="w-6 h-6 text-white" />
+                              </button>
+                            )}
+
+                            {currentIndex < images.length - 1 && (
+                              <button
+                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-foreground transition-colors"
+                                onClick={() => setCurrentIndex(currentIndex + 1)}
+                                aria-label="Next photo"
+                              >
+                                <ChevronRight className="w-6 h-6 text-white" />
+                              </button>
+                            )}
+
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                              {images.map((img, idx) => (
+                                <button
+                                  key={img.id}
+                                  onClick={() => setCurrentIndex(idx)}
+                                  aria-label={`Go to photo ${idx + 1}`}
+                                  className={`w-2 h-2 rounded-full transition-colors ${currentIndex === idx ? 'bg-white' : 'bg-white/40'}`}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )
+                  })()
                 )}
               </div>
             </div>

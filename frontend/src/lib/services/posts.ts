@@ -44,11 +44,13 @@ export const savePost = async (id: string): Promise<{ status: string; is_saved: 
   return res.data
 }
 
+import type { AxiosRequestConfig } from 'axios'
+
 // create a new post
-export const createPost = async (formData: FormData) => {
-  const res = await api.post("/posts/", formData)
+export const createPost = async (formData: FormData, config?: AxiosRequestConfig) => {
+  const res = await api.post("/posts/", formData, { headers: { 'Content-Type': 'multipart/form-data' }, ...(config || {}) })
   return res.data
-}
+} 
 
 // get popular places
 export const getPopularPlaces = async (): Promise<{ location: string; postCount: number }[]> => {

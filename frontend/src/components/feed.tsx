@@ -33,6 +33,20 @@ export function Feed() {
     }
 
     fetchPosts()
+
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      const newPost = detail?.post
+      if (newPost) {
+        setPosts((prev) => {
+          if (prev.find(p => p.id === newPost.id)) return prev
+          return [newPost, ...prev]
+        })
+      }
+    }
+
+    window.addEventListener('postCreated', handler as EventListener)
+    return () => window.removeEventListener('postCreated', handler as EventListener)
   }, [])
 
   const handleLoadMore = async () => {
@@ -87,7 +101,7 @@ export function Feed() {
           <p className="text-center text-muted-foreground">No posts found</p>
         ) : (
           <>
-            {posts.map((post) => <Post key={post.id} post={post} />)}
+            {posts.map((post, idx) => <Post key={post.id} post={post} priority={idx === 0} />)}
             
             {/* Load More Button */}
             {hasMore && (

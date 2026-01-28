@@ -7,7 +7,7 @@ import { Modal } from "@/components/modal"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, ChevronLeft, Smile } from "lucide-react"
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, ChevronLeft, Smile, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
@@ -31,6 +31,7 @@ export default function PostModal() {
   const router = useRouter()
   const postId = params.id as string
   const [post, setPost] = useState<PostType | null>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
 
   const [comment, setComment] = useState("")
   const [isLiked, setIsLiked] = useState(false)
@@ -267,19 +268,57 @@ export default function PostModal() {
             className="relative w-full h-full flex items-center justify-center cursor-pointer"
             onDoubleClick={handleImageDoubleClick}
           >
-            <Image
-              src={post.image || "/placeholder.svg"}
-              alt="Post"
-              width={1200}
-              height={1200}
-              priority
-              className="object-contain max-h-full max-w-full"
-            />
+            {post && (
+              (() => {
+                const images = post.images && post.images.length > 0 ? post.images.sort((a,b) => a.order - b.order) : [{ id: 'main', image: post.image, order: 0, alt_text: post.caption }]
 
-            {isAnimating && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <Heart className="w-24 h-24 text-white fill-white animate-[heartPop_0.6s_ease-out]" />
-              </div>
+                return (
+                  <>
+                    <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post'} width={1200} height={1200} priority className="object-contain max-h-full max-w-full" />
+
+                    {isAnimating && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <Heart className="w-24 h-24 text-white fill-white animate-[heartPop_0.6s_ease-out]" />
+                      </div>
+                    )}
+
+                    {images.length > 1 && (
+                      <>
+                        {currentIndex > 0 && (
+                          <button
+                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-foreground transition-colors"
+                            onClick={() => setCurrentIndex(currentIndex - 1)}
+                            aria-label="Previous photo"
+                          >
+                            <ChevronLeft className="w-6 h-6 text-white" />
+                          </button>
+                        )}
+
+                        {currentIndex < images.length - 1 && (
+                          <button
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-foreground transition-colors"
+                            onClick={() => setCurrentIndex(currentIndex + 1)}
+                            aria-label="Next photo"
+                          >
+                            <ChevronRight className="w-6 h-6 text-white" />
+                          </button>
+                        )}
+
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                          {images.map((img, idx) => (
+                            <button
+                              key={img.id}
+                              onClick={() => setCurrentIndex(idx)}
+                              aria-label={`Go to photo ${idx + 1}`}
+                              className={`w-2 h-2 rounded-full transition-colors ${currentIndex === idx ? 'bg-white' : 'bg-white/40'}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )
+              })()
             )}
           </div>
         </div>
