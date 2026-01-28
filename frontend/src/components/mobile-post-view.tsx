@@ -1,18 +1,18 @@
+"use client"
+
 import React from "react"
-import dynamic from "next/dynamic"
-import type { EmojiClickData } from "emoji-picker-react"
-import { Theme as EmojiTheme } from "emoji-picker-react"
-const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
+
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ChevronLeft, ChevronRight, BadgeCheck, Smile } from "lucide-react"
+
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ChevronLeft, ChevronRight, BadgeCheck } from "lucide-react"
 import Image from "next/image"
+import { Sidebar } from "@/components/sidebar"
+import { toggleFollowUser, getUserProfile } from "@/lib/services/profile"
+import { useAuth } from "@/components/auth-provider"
 import type { PostType } from "@/types/post"
 import useIsDark from "@/lib/hooks/useIsDark"
-
-// compute images helper inside component
 
 type Props = {
   post?: PostType | null
@@ -20,19 +20,11 @@ type Props = {
   isSaved: boolean
   likes: number
   isAnimating: boolean
-  comment: string
-  isEmojiOpen: boolean
-  emojiPickerRef: React.RefObject<HTMLDivElement | null>
-  commentInputRef: React.RefObject<HTMLInputElement | null>
-  onToggleEmoji: () => void
-  onEmojiClick: (data: EmojiClickData) => void
   onLike: () => void
   onSave: () => void
   onOpenComments: () => void
   onShare: () => void
   onBack: () => void
-  onAddComment: () => void
-  onSetComment: (v: string) => void
 }
 
 export default function MobilePostView(props: Props) {
@@ -42,24 +34,69 @@ export default function MobilePostView(props: Props) {
     isSaved,
     likes,
     isAnimating,
-    comment,
-    isEmojiOpen,
-    emojiPickerRef,
-    commentInputRef,
-    onToggleEmoji,
-    onEmojiClick,
     onLike,
     onSave,
     onOpenComments,
     onShare,
     onBack,
-    onAddComment,
-    onSetComment,
   } = props
 
   const isDark = useIsDark()
+  const { user } = useAuth()
 
-  // Extracted carousel to comply with Rules of Hooks (avoid calling hooks inside callbacks)
+  // Follow state for post author (supports both API shapes: isFollowing or is_following)
+  const [isFollowingState, setIsFollowingState] = React.useState<boolean>(false)
+  React.useEffect(() => {
+    if (!post?.user) {
+      setIsFollowingState(false)
+      return
+    }
+
+    // Use follow flag if already present on post.user
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userAny: any = post.user
+    const initial = userAny.isFollowing ?? userAny.is_following
+    if (typeof initial !== "undefined") {
+      setIsFollowingState(initial ?? false)
+      return
+    }
+
+    // Fallback: fetch profile to determine follow status
+    let mounted = true
+    ;(async () => {
+      try {
+        const profile = await getUserProfile(post.user.username)
+        if (mounted) setIsFollowingState(profile.is_following ?? false)
+      } catch (err) {
+        console.error("Failed to fetch profile for follow state", err)
+      }
+    })()
+
+    return () => { mounted = false }
+  }, [post?.id, post?.user])
+
+  const [isFollowLoading, setIsFollowLoading] = React.useState(false)
+  const [isHoveringUnfollow, setIsHoveringUnfollow] = React.useState(false)
+  // Caption expand state
+  const [isCaptionExpanded, setIsCaptionExpanded] = React.useState(false)
+
+  const handleToggleFollow = async () => {
+    if (!post?.user?.username) return
+    setIsFollowLoading(true)
+    try {
+      const res = await toggleFollowUser(post.user.username)
+      setIsFollowingState(res.is_following)
+    } catch (err) {
+      console.error("Failed to toggle follow:", err)
+    } finally {
+      setIsFollowLoading(false)
+      setIsHoveringUnfollow(false)
+    }
+  }
+
+  // Close expanded caption when viewing a different post
+  React.useEffect(() => { setIsCaptionExpanded(false) }, [post?.id])
+
   function PostImagesCarousel({ post, isAnimating }: { post: PostType; isAnimating: boolean }) {
     const images = post.images && post.images.length > 0 ? [...post.images].sort((a, b) => a.order - b.order) : [{ id: 'main', image: post.image, order: 0, alt_text: post.caption }]
     const [currentIndex, setCurrentIndex] = React.useState(0)
@@ -68,7 +105,7 @@ export default function MobilePostView(props: Props) {
 
     return (
       <>
-        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill className="object-contain object-center" />
+        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill className="object-cover" />
 
         {isAnimating && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -80,31 +117,31 @@ export default function MobilePostView(props: Props) {
           <>
             {currentIndex > 0 && (
               <button
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/50 dark:bg-white/50 backdrop-blur-sm hover:bg-black/60 dark:hover:bg-white/60 rounded-full flex items-center justify-center text-white dark:text-black transition-all z-10"
                 onClick={() => setCurrentIndex(i => i - 1)}
                 aria-label="Previous photo"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
             )}
 
             {currentIndex < images.length - 1 && (
               <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/50 dark:bg-white/50 backdrop-blur-sm hover:bg-black/60 dark:hover:bg-white/60 rounded-full flex items-center justify-center text-white dark:text-black transition-all z-10"
                 onClick={() => setCurrentIndex(i => i + 1)}
                 aria-label="Next photo"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             )}
 
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
               {images.map((img, idx) => (
                 <button
                   key={img.id}
                   onClick={() => setCurrentIndex(idx)}
                   aria-label={`Go to photo ${idx + 1}`}
-                  className={`w-2 h-2 rounded-full transition-colors ${currentIndex === idx ? 'bg-blue-500' : 'bg-muted/40'}`}
+                  className={`w-1.5 h-1.5 rounded-full transition-all ${currentIndex === idx ? 'bg-black dark:bg-white w-2 h-2' : 'bg-black/60 dark:bg-white/60'}`}
                 />
               ))}
             </div>
@@ -115,104 +152,114 @@ export default function MobilePostView(props: Props) {
   }
 
   return (
-    <div className="relative flex-1 flex flex-col">
-      {/* Top Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-3 bg-gradient-to-b from-background/90 to-transparent">
-        <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" className="p-0 h-auto hover:bg-transparent" onClick={onBack}>
-            <ChevronLeft className="w-6 h-6 text-foreground" />
+    <div className="h-full w-full bg-white dark:bg-black flex flex-col">
+      {/* Header Bar */}
+      <div className="relative flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/95 backdrop-blur-sm border-b border-gray-200/10 dark:border-white/10">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="p-0 h-auto hover:bg-transparent z-20" onClick={onBack}>
+            <ChevronLeft className="w-8 h-8 text-black dark:text-white" />
           </Button>
-          <div className="flex items-center space-x-2">
-            <Avatar className="w-8 h-8">
-              <AvatarImage src={post?.user?.avatar || "/placeholder.svg"} alt={post?.user?.username} />
-              <AvatarFallback>{post?.user?.username?.slice(0, 2)?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex items-center text-foreground text-sm font-semibold">
-              <span>{post?.user?.username}</span>
-              {post?.user?.isVerified && <BadgeCheck className="w-4 h-4 text-blue-400 ml-2" />}
-            </div>
-          </div>
         </div>
-        <Button variant="ghost" size="icon" className="p-0 h-auto hover:bg-transparent">
-          <MoreHorizontal className="w-5 h-5 text-foreground" />
+        <span className="absolute left-1/2 -translate-x-1/2 text-black dark:text-white font-semibold text-lg pointer-events-none">Post</span>
+      </div>
+
+      {/* User Info Bar */}
+      <div className="flex items-center justify-between px-3 py-2.5 bg-white/95 dark:bg-black/95 backdrop-blur-sm">
+        <div className="flex items-center gap-2.5">
+          <Avatar className="w-8 h-8 ring-2 ring-gray-200/10 dark:ring-white/10">
+            <AvatarImage src={post?.user?.avatar || "/placeholder.svg"} alt={post?.user?.username} />
+            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs">
+              {post?.user?.username?.slice(0, 2)?.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex items-center gap-1.5">
+            <span className="text-black dark:text-white text-sm font-semibold">{post?.user?.username}</span>
+            {post?.user?.isVerified && <BadgeCheck className="w-3.5 h-3.5 text-blue-400 fill-blue-400" />}
+          </div>
+          <span className="text-black/40 dark:text-white/40 text-xs">•</span>
+          {/* Hide follow button on own post */}
+          {post?.user?.username !== user?.username && (
+            <button
+              type="button"
+              onClick={handleToggleFollow}
+              disabled={isFollowLoading}
+              onMouseEnter={() => isFollowingState && setIsHoveringUnfollow(true)}
+              onMouseLeave={() => isFollowingState && setIsHoveringUnfollow(false)}
+              className={`ml-2 text-sm font-semibold focus:outline-none transition-colors ${isFollowingState ? `px-3 py-1.5 rounded-md border-2 shadow-sm flex items-center justify-center bg-white text-black border-black dark:bg-black dark:text-white dark:border-white ${isHoveringUnfollow ? 'border-red-500 text-red-600 dark:border-red-500 dark:text-red-500' : ''}` : "text-blue-400 hover:text-blue-300"}`}
+              aria-pressed={isFollowingState}
+            >
+              {isFollowLoading ? "..." : (isFollowingState ? (isHoveringUnfollow ? "Unfollow" : "Following") : "Follow")}
+            </button>
+          )}
+        </div>
+        <Button variant="ghost" size="icon" className="p-0 w-auto h-auto hover:bg-transparent">
+          <MoreHorizontal className="w-6 h-6 text-black dark:text-white" />
         </Button>
       </div>
 
-      {/* Image area (carousel) */}
-      <div className="flex-1 bg-background flex items-center justify-center" onDoubleClick={onLike}>
+      {/* Image Container */}
+      <div className="flex-1 bg-white dark:bg-black relative" onDoubleClick={onLike}>
         <div className="w-full h-full relative">
-          {post && (
-            <PostImagesCarousel post={post} isAnimating={isAnimating} />
-          )}
+          {post && <PostImagesCarousel post={post} isAnimating={isAnimating} />}
         </div>
       </div>
 
-      {/* Bottom overlay */}
-      <div className="absolute left-0 right-0 bottom-0 z-30 bg-gradient-to-t from-background/90 to-transparent p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={onLike} className="p-0 h-auto hover:bg-transparent">
-              <Heart className={`w-6 h-6 ${isLiked ? "fill-red-500 text-red-500" : "text-foreground"}`} />
+      {/* Action Buttons */}
+      <div className="px-3 py-2 bg-white/95 dark:bg-black/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={onLike} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
+              <Heart className={`w-[26px] h-[26px] ${isLiked ? "fill-red-500 text-red-500" : "text-black dark:text-white"} transition-colors`} />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onOpenComments} className="p-0 h-auto hover:bg-transparent">
-              <MessageCircle className="w-6 h-6 text-foreground" />
+            <Button variant="ghost" size="sm" onClick={onOpenComments} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
+              <MessageCircle className="w-[26px] h-[26px] text-black dark:text-white" />
             </Button>
-            <Button variant="ghost" size="sm" className="p-0 h-auto hover:scale-110 transition-transform" onClick={onShare}>
-              <Send className="w-7 h-7 hover:text-muted-foreground transition-colors" />
+            <Button variant="ghost" size="sm" onClick={onShare} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
+              <Send className="w-[26px] h-[26px] text-black dark:text-white" />
             </Button>
           </div>
 
-          <Button variant="ghost" size="sm" onClick={onSave} className="p-0 h-auto hover:bg-transparent">
-            <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current text-foreground" : "text-foreground"}`} />
+          <Button variant="ghost" size="sm" onClick={onSave} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
+            <Bookmark className={`w-[26px] h-[26px] ${isSaved ? (isDark ? "fill-white text-white" : "fill-black text-black") : "text-black dark:text-white"} transition-colors`} />
           </Button>
         </div>
 
-        <div className="text-foreground font-semibold text-sm mb-1">{likes === 1 ? "1 like" : `${likes?.toLocaleString()} likes`}</div>
-
-        <div className="text-foreground text-sm mb-2">
-          <span className="font-semibold mr-2">{post?.user?.username}</span>
-          <span className="line-clamp-2">{post?.caption}</span>
+        {/* Likes */}
+        <div className="text-black dark:text-white font-semibold text-sm mb-1.5">
+          {likes === 1 ? "1 like" : `${likes?.toLocaleString()} likes`}
         </div>
 
-        <button className="text-sm text-muted-foreground mb-2" onClick={onOpenComments}>
+        {/* Caption */}
+        <div className="text-black dark:text-white text-sm mb-1">
+          <span className="font-semibold mr-1.5">{post?.user?.username}</span>
+
+          <div className={`text-left ${isCaptionExpanded ? '' : 'line-clamp-2'} mr-2`}>{post?.caption}</div>
+
+          {post?.caption && post.caption.length > 100 && !isCaptionExpanded && (
+            <button
+              type="button"
+              onClick={() => setIsCaptionExpanded(true)}
+              className="text-black/60 dark:text-white/60 ml-1"
+            >
+              ... more
+            </button>
+          )}
+        </div>
+
+        {/* Comments Link */}
+        <button className="text-sm text-black/60 dark:text-white/60 mb-1.5 hover:text-black/80 dark:hover:text-white/80 transition-colors" onClick={onOpenComments}>
           View all {post?.comments ?? 0} comments
         </button>
 
-        <div className="text-xs text-muted-foreground mb-2">{post?.timeAgo}</div>
+        {/* Time */}
+        <div className="text-xs text-black/50 dark:text-white/50 mb-2.5">{post?.timeAgo}</div>
 
-        {/* Comment input (compact) */}
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9" onClick={onToggleEmoji}>
-            <Smile className="w-5 h-5 text-foreground" />
-          </Button>
+        {/* Mobile bottom nav replaces comment input */}
+        <div className="h-16 lg:hidden" />
 
-          <Input
-            ref={commentInputRef}
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => onSetComment(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                onAddComment()
-              }
-            }}
-            className="flex-1 border-0 bg-muted text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
-          />
-
-          {comment && (
-            <Button variant="ghost" size="sm" className="text-blue-400 font-semibold p-0 h-auto hover:bg-transparent" onClick={onAddComment}>
-              Post
-            </Button>
-          )}
-
-          {isEmojiOpen && (
-            <div ref={emojiPickerRef} className="absolute bottom-20 left-4 z-50">
-              <EmojiPicker theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
-            </div>
-          )}
-        </div>
       </div>
+      
+      <Sidebar />
     </div>
   )
 }
