@@ -35,6 +35,7 @@ import { useConversationStore } from "@/stores/useConversationStore"
 import { useNotificationStore } from "@/stores/useNotificationStore"
 import { useWebSocket } from "@/components/message-provider"
 import { useTheme } from "next-themes"
+import { setFileForUrl } from "@/lib/createImageStore"
 import { Switch } from "@/components/ui/switch"
 import React, { useEffect, useState } from "react"
 import { getMyProfile, updateMyProfile } from "@/lib/services/profile"
@@ -123,6 +124,25 @@ export function Sidebar() {
     router.push("/login")
   }
 
+  // Mobile create button: open native file picker and navigate to /create with the selected image stored in sessionStorage
+  const handleMobileImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      // Create object URL and store file in-memory for quick access across pages
+      const url = URL.createObjectURL(file)
+      setFileForUrl(url, file)
+      // Prefer using blob URL in sessionStorage so pages use the in-memory map
+      sessionStorage.setItem("createImage", url)
+      // Remove any old persistent id
+      sessionStorage.removeItem("createImageId")
+      router.push("/create")
+    } catch (err) {
+      console.error("Failed to open image for create:", err)
+    }
+  }
+
   const { conversations } = useConversationStore()
   const { unreadCount: unreadNotificationCount } = useNotificationStore()
 
@@ -130,43 +150,17 @@ export function Sidebar() {
     ? conversations.reduce((sum, convo) => sum + (convo.unread_count || 0), 0)
     : (console.warn('conversations is not an array:', conversations), 0)
 
-  // Keep sidebar icon-only by default on desktop. Expand on hover unless the Search drawer is open.
+  // Sidebar sizing and state
+  const [isMoreOpen, setIsMoreOpen] = useState(false)
   const isCollapsedByDefault = true
-  // Allow hover expansion; only disable when search is open
   const enableHoverExpand = !isSearchOpen
-  // Sidebar stays collapsed by default unless the user hovers (or search is open)
   const isSidebarCollapsed = isSearchOpen || isCollapsedByDefault
   const sidebarWidthClass = enableHoverExpand ? "lg:w-20 lg:hover:w-64" : "lg:w-20"
-
-  // Expand sidebar when More menu is open
-  const [isMoreOpen, setIsMoreOpen] = useState(false)
   const finalSidebarClass = isMoreOpen ? "lg:w-64" : sidebarWidthClass
 
-  // Mobile profile button
+  // Mobile profile link helper
   const profileMobile = navigation.find(item => item.name === "Profile")
   const isProfileMobileActive = Boolean(profileMobile && pathname === profileMobile.href)
-
-  // Effect to update browser title with unread count
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const originalTitle = 'Instagram'
-      const totalUnread = totalUnreadMessages + unreadNotificationCount
-      
-      if (isAuthenticated && totalUnread > 0) {
-        document.title = `(${totalUnread}) ${originalTitle}`
-      } else {
-        document.title = originalTitle
-      }
-    }
-  }, [totalUnreadMessages, unreadNotificationCount, isAuthenticated])
-
-  // If not authenticated, don't show the sidebar
-  if (
-    !isAuthenticated &&
-    !["/", "/login", "/register"].includes(pathname)
-  ) {
-    return null;
-  }
 
   return (
     <>
@@ -184,10 +178,13 @@ export function Sidebar() {
             
             {/* Right Icons */}
             <div className="flex items-center gap-4">
-              {/* Create Post Button */}
-              <Link href="/create" className="relative">
-                <PlusSquare className="w-6 h-6" />
-              </Link>
+              {/* Create Post Button (mobile) - open native image picker and go to /create */}
+              <>
+                <input id="mobile-image-upload" type="file" accept="image/*" capture="environment" className="hidden" onChange={handleMobileImageUpload} />
+                <button onClick={() => document.getElementById('mobile-image-upload')?.click()} aria-label="Create post" className="relative">
+                  <PlusSquare className="w-6 h-6" />
+                </button>
+              </>
               
               {/* Notifications with Badge */}
               <Link href="/notifications" className="relative">
