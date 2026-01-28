@@ -196,7 +196,14 @@ export default function PostModal() {
                 variant="ghost"
                 size="icon"
                 className="p-0 h-auto hover:bg-transparent"
-                onClick={() => setShowComments(false)}
+                onClick={() => {
+                  // If comments was opened via ?comments=1 in URL, go back in history so the modal closes to feed.
+                  if (searchParams?.get("comments") === "1" || searchParams?.get("comments") === "true") {
+                    router.back()
+                  } else {
+                    setShowComments(false)
+                  }
+                }}
               >
                 <ChevronLeft className="w-6 h-6" />
               </Button>

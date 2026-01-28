@@ -300,7 +300,7 @@ export default function CreatePage() {
           ) : (
             <>
               {step === 'style' && (
-                <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden mb-6">
+                <div className="relative w-full aspect-square bg-card rounded-lg overflow-hidden mb-6">
                   <div className="absolute inset-0 flex items-center justify-center">
                     {isZoomed ? (
                       <div className="relative w-full h-full flex items-center justify-center" style={{ transform: `rotate(${rotation}deg)` }}>
@@ -322,7 +322,7 @@ export default function CreatePage() {
 
                   <div className="absolute left-4 bottom-3 flex items-center gap-3">
                     <button
-                      className="p-2 bg-black/40 rounded-full shadow-md translate-y-1"
+                      className="p-2 rounded-full shadow-md translate-y-1 bg-white/60 text-black dark:bg-black/40 dark:text-white"
                       aria-label={isZoomed ? 'Enter crop and zoom in' : 'Exit crop and zoom out'}
                       onClick={() => {
                         if (isZoomed) {
@@ -337,13 +337,13 @@ export default function CreatePage() {
                       }}
                     >
                       {/* Show expand icon in preview (action = enter crop), and collapse icon inside cropper */}
-                      {isZoomed ? <Maximize2 className="w-5 h-5 text-white" /> : <Crop className="w-5 h-5 text-white" />}
+                      {isZoomed ? <Maximize2 className="w-5 h-5" /> : <Crop className="w-5 h-5" /> }
                     </button>
                   </div>
 
                   <div className="absolute right-4 bottom-3 flex items-center gap-3">
-                    <button className="p-2 bg-black/40 rounded-full shadow-md translate-y-1" aria-label="Rotate" onClick={() => setRotation((r) => (r + 90) % 360)}>
-                      <RefreshCcwDot className="w-5 h-5 text-white" />
+                    <button className="p-2 rounded-full shadow-md translate-y-1" aria-label="Rotate" onClick={() => setRotation((r) => (r + 90) % 360)}>
+                      <RefreshCcwDot className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export default function CreatePage() {
                     />
 
                     {/* Image preview */}
-                    <div className="w-14 h-14 rounded-md overflow-hidden bg-black shrink-0">
+                    <div className="w-14 h-14 rounded-md overflow-hidden bg-card shrink-0">
                       <Image
                         src={imageSrc}
                         alt="Selected"
@@ -396,7 +396,7 @@ export default function CreatePage() {
                         <div className="p-4 border-t">
                           <p className="text-sm text-muted-foreground mb-3">Alt text describes your photos for people with visual impairments. Alt text will be automatically created for your photos or you can choose to write your own.</p>
                           <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 overflow-hidden rounded-md bg-black">
+                            <div className="w-12 h-12 overflow-hidden rounded-md bg-card">
                               <Image src={imageSrc as string} alt="Selected" width={48} height={48} className="object-cover" />
                             </div>
                             <Textarea placeholder="Write alt text..." value={altText} onChange={(e) => setAltText(e.target.value)} />

@@ -59,6 +59,61 @@ export default function MobilePostView(props: Props) {
 
   const isDark = useIsDark()
 
+  // Extracted carousel to comply with Rules of Hooks (avoid calling hooks inside callbacks)
+  function PostImagesCarousel({ post, isAnimating }: { post: PostType; isAnimating: boolean }) {
+    const images = post.images && post.images.length > 0 ? [...post.images].sort((a, b) => a.order - b.order) : [{ id: 'main', image: post.image, order: 0, alt_text: post.caption }]
+    const [currentIndex, setCurrentIndex] = React.useState(0)
+
+    React.useEffect(() => { setCurrentIndex(0) }, [post?.id])
+
+    return (
+      <>
+        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill className="object-contain object-center" />
+
+        {isAnimating && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <Heart className="w-24 h-24 text-red-500 fill-red-500 drop-shadow-lg" style={{ animation: "heartPop 0.6s ease-out" }} />
+          </div>
+        )}
+
+        {images.length > 1 && (
+          <>
+            {currentIndex > 0 && (
+              <button
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
+                onClick={() => setCurrentIndex(i => i - 1)}
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+
+            {currentIndex < images.length - 1 && (
+              <button
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
+                onClick={() => setCurrentIndex(i => i + 1)}
+                aria-label="Next photo"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+              {images.map((img, idx) => (
+                <button
+                  key={img.id}
+                  onClick={() => setCurrentIndex(idx)}
+                  aria-label={`Go to photo ${idx + 1}`}
+                  className={`w-2 h-2 rounded-full transition-colors ${currentIndex === idx ? 'bg-blue-500' : 'bg-muted/40'}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="relative flex-1 flex flex-col">
       {/* Top Header */}
@@ -87,59 +142,7 @@ export default function MobilePostView(props: Props) {
       <div className="flex-1 bg-background flex items-center justify-center" onDoubleClick={onLike}>
         <div className="w-full h-full relative">
           {post && (
-            (() => {
-              const images = post.images && post.images.length > 0 ? post.images.sort((a,b) => a.order - b.order) : [{ id: 'main', image: post.image, order: 0, alt_text: post.caption }]
-              const [currentIndex, setCurrentIndex] = React.useState(0)
-
-              React.useEffect(() => { setCurrentIndex(0) }, [post?.id])
-
-              return (
-                <>
-                  <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill className="object-contain object-center" />
-
-                  {isAnimating && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <Heart className="w-24 h-24 text-red-500 fill-red-500 drop-shadow-lg" style={{ animation: "heartPop 0.6s ease-out" }} />
-                    </div>
-                  )}
-
-                  {images.length > 1 && (
-                    <>
-                      {currentIndex > 0 && (
-                        <button
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
-                          onClick={() => setCurrentIndex(currentIndex - 1)}
-                          aria-label="Previous photo"
-                        >
-                          <ChevronLeft className="w-5 h-5" />
-                        </button>
-                      )}
-
-                      {currentIndex < images.length - 1 && (
-                        <button
-                          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-muted/60 hover:bg-muted/80 rounded-full flex items-center justify-center text-foreground transition-colors"
-                          onClick={() => setCurrentIndex(currentIndex + 1)}
-                          aria-label="Next photo"
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
-                      )}
-
-                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
-                        {images.map((img, idx) => (
-                          <button
-                            key={img.id}
-                            onClick={() => setCurrentIndex(idx)}
-                            aria-label={`Go to photo ${idx + 1}`}
-                            className={`w-2 h-2 rounded-full transition-colors ${currentIndex === idx ? 'bg-blue-500' : 'bg-muted/40'}`}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </>
-              )
-            })()
+            <PostImagesCarousel post={post} isAnimating={isAnimating} />
           )}
         </div>
       </div>

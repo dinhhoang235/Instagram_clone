@@ -93,6 +93,31 @@ body {
   }
 }
 
+/* Make react-easy-crop overlay transparent in light mode and subtle in dark mode */
+.reactEasyCrop_CropArea {
+  /* remove the dark shadow overlay on light mode */
+  box-shadow: 0 0 0 9999em rgba(0,0,0,0) !important;
+  color: rgba(0,0,0,0) !important;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.reactEasyCrop_CropAreaGrid::before,
+.reactEasyCrop_CropAreaGrid::after {
+  border-color: rgba(0,0,0,0.12);
+}
+
+.dark .reactEasyCrop_CropArea {
+  /* keep the original overlay in dark mode for contrast */
+  box-shadow: 0 0 0 9999em rgba(0,0,0,0.5);
+  color: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.dark .reactEasyCrop_CropAreaGrid::before,
+.dark .reactEasyCrop_CropAreaGrid::after {
+  border-color: rgba(255,255,255,0.5);
+}
+
 @layer base {
   * {
     @apply border-border;
