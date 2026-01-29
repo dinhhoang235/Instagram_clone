@@ -91,6 +91,7 @@ export default function PostModal() {
         setPost(data)
         setLikes(data.likes || 0)
         setIsLiked(data.is_liked || false)
+        setIsSaved(data.is_saved || false)
       } catch (err) {
         console.error("Error fetching post", err)
       }
@@ -140,6 +141,22 @@ export default function PostModal() {
       setIsAnimating(true)
       handleLike()
       setTimeout(() => setIsAnimating(false), 600)
+    }
+  }
+
+  const handleSave = async () => {
+    const previous = isSaved
+    // optimistic update
+    setIsSaved(!previous)
+
+    try {
+      const { savePost } = await import('@/lib/services/posts')
+      await savePost(postId)
+    } catch (error) {
+      console.error('Failed to toggle save', error)
+      // rollback
+      setIsSaved(previous)
+      toast({ title: 'Error', description: 'Failed to save post', variant: 'destructive' })
     }
   }
 
@@ -286,7 +303,7 @@ export default function PostModal() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsSaved(!isSaved)}
+                onClick={handleSave}
                 className="p-0 h-auto hover:bg-transparent"
               >
                 <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current" : ""}`} />
