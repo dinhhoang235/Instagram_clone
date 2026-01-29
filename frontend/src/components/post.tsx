@@ -7,7 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import PostOptionsDialog from "@/components/post-options-dialog"
+import { getMyProfile } from "@/lib/services/profile"
 import { useRouter } from "next/navigation"
 import { PostType } from "@/types/post"
 import { likePost } from "@/lib/services/posts"
@@ -30,6 +31,8 @@ export function Post({ post, priority = false }: PostProps) {
   const [isAnimating, setIsAnimating] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -45,6 +48,21 @@ export function Post({ post, priority = false }: PostProps) {
   useEffect(() => {
     setCurrentIndex(0)
   }, [post.id])
+
+  // Detect if the post is owned by the current user
+  useEffect(() => {
+    let mounted = true
+    getMyProfile()
+      .then((profile) => {
+        if (!mounted) return
+        setIsOwner(profile.username === post.user.username)
+      })
+      .catch(() => {})
+
+    return () => {
+      mounted = false
+    }
+  }, [post.user.username])
 
   // Update comments count when post prop changes
   useEffect(() => {
@@ -156,21 +174,38 @@ export function Post({ post, priority = false }: PostProps) {
             </>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Report</DropdownMenuItem>
-            <DropdownMenuItem>Unfollow</DropdownMenuItem>
-            <DropdownMenuItem>Add to favorites</DropdownMenuItem>
-            <DropdownMenuItem>Share to...</DropdownMenuItem>
-            <DropdownMenuItem>Copy link</DropdownMenuItem>
-            <DropdownMenuItem>Embed</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <Button variant="ghost" size="sm" onClick={() => setIsOptionsOpen(true)}>
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+
+          <PostOptionsDialog
+            open={isOptionsOpen}
+            onOpenChange={(v) => setIsOptionsOpen(v)}
+            isOwner={isOwner}
+            onDelete={async () => {
+              try {
+                // TODO: call delete endpoint
+                toast({ title: 'Deleted' })
+              } catch {
+                toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' })
+              }
+            }}
+            onEdit={() => router.push(`/post/${post.id}/edit`)}
+            onShare={() => setIsShareOpen(true)}
+            onCopyLink={async () => {
+              try {
+                await navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`)
+                toast({ title: 'Copied', description: 'Link copied to clipboard' })
+              } catch {
+                toast({ title: 'Error', description: 'Failed to copy', variant: 'destructive' })
+              }
+            }}
+            onUnfollow={async () => toast({ title: 'Unfollowed' })}
+            onReport={async () => toast({ title: 'Reported' })}
+            onAddToFavorites={async () => toast({ title: 'Added to favorites' })}
+            onGoToPost={() => router.push(`/post/${post.id}`)}
+            onAboutThisAccount={() => router.push(`/${post.user.username}`)}
+          />
       </div>
 
       {/* Post Image */}

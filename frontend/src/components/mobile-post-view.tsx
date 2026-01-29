@@ -13,6 +13,9 @@ import { toggleFollowUser, getUserProfile } from "@/lib/services/profile"
 import { useAuth } from "@/components/auth-provider"
 import type { PostType } from "@/types/post"
 import useIsDark from "@/lib/hooks/useIsDark"
+import PostOptionsDialog from "@/components/post-options-dialog"
+import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
 type Props = {
   post?: PostType | null
@@ -43,6 +46,10 @@ export default function MobilePostView(props: Props) {
 
   const isDark = useIsDark()
   const { user } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [isOptionsOpen, setIsOptionsOpen] = React.useState(false)
+  const isOwner = post?.user?.username === user?.username
 
   // Local save state fallback (in case parent onSave isn't wired)
   const [isSavedState, setIsSavedState] = React.useState<boolean>(isSaved ?? false)
@@ -215,9 +222,29 @@ export default function MobilePostView(props: Props) {
             </button>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="p-0 w-auto h-auto hover:bg-transparent">
+        <Button variant="ghost" size="icon" className="p-0 w-auto h-auto hover:bg-transparent" onClick={() => setIsOptionsOpen(true)}>
           <MoreHorizontal className="w-6 h-6 text-black dark:text-white" />
         </Button>
+
+        <PostOptionsDialog
+          open={isOptionsOpen}
+          onOpenChange={(v) => setIsOptionsOpen(v)}
+          isOwner={!!isOwner}
+          onReport={() => toast({ title: 'Reported' })}
+          onUnfollow={() => toast({ title: 'Unfollowed' })}
+          onAddToFavorites={() => toast({ title: 'Added to favorites' })}
+          onShare={() => onShare()}
+          onCopyLink={async () => {
+            try {
+              await navigator.clipboard.writeText(`${window.location.origin}/post/${post?.id}`)
+              toast({ title: 'Copied', description: 'Link copied to clipboard' })
+            } catch {
+              toast({ title: 'Error', description: 'Failed to copy', variant: 'destructive' })
+            }
+          }}
+          onGoToPost={() => router.push(`/post/${post?.id}`)}
+          onAboutThisAccount={() => router.push(`/${post?.user?.username}`)}
+        />
       </div>
 
       {/* Image Container */}

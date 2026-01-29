@@ -11,6 +11,9 @@ import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck, Chevr
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
+import PostOptionsDialog from "@/components/post-options-dialog"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/ui/use-toast"
 import type { EmojiClickData } from "emoji-picker-react"
 import { Theme as EmojiTheme } from "emoji-picker-react"
 import useIsDark from "@/lib/hooks/useIsDark"
@@ -23,7 +26,6 @@ import { createComment } from "@/lib/services/comments"
 import { renderCaptionWithTags } from "@/components/tag"
 import ShareDialog from "@/components/share-dialog"
 import { sharePostWithUser } from "@/lib/services/share"
-import { useToast } from "@/components/ui/use-toast"
 
 export default function PostModal() {
   const params = useParams()
@@ -45,6 +47,8 @@ export default function PostModal() {
   const [isEmojiOpen, setIsEmojiOpen] = useState(false)
   const emojiPickerRef = useRef<HTMLDivElement | null>(null)
   const isDark = useIsDark()
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false)
+  const { user } = useAuth()
 
 
 
@@ -252,9 +256,20 @@ export default function PostModal() {
                 {post.user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-current" />}
               </div>
             </div>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => setIsOptionsOpen(true)}>
               <MoreHorizontal className="w-4 h-4" />
             </Button>
+
+            <PostOptionsDialog
+              open={isOptionsOpen}
+              onOpenChange={(v) => setIsOptionsOpen(v)}
+              isOwner={!!(post.user.username === user?.username)}
+              onReport={() => toast({ title: 'Reported' })}
+              onUnfollow={() => toast({ title: 'Unfollowed' })}
+              onAddToFavorites={() => toast({ title: 'Added to favorites' })}
+              onGoToPost={() => router.push(`/post/${postId}`)}
+              onAboutThisAccount={() => router.push(`/${post.user.username}`)}
+            />
           </div>
           {/* Comments */}
           <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">

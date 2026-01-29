@@ -24,11 +24,12 @@ import { PostType } from "@/types/post"
 import { createComment } from "@/lib/services/comments"
 import { renderCaptionWithTags } from "@/components/tag"
 import ShareDialog from "@/components/share-dialog"
+import PostOptionsDialog from "@/components/post-options-dialog"
 import { sharePostWithUser } from "@/lib/services/share"
 import { useToast } from "@/components/ui/use-toast"
 
 export default function PostPage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const params = useParams()
   const router = useRouter()
   const postId = params.id as string
@@ -43,6 +44,8 @@ export default function PostPage() {
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const { toast } = useToast()
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false)
+  const isOwner = post ? post.user.username === user?.username : false
 
   // Emoji picker state
   const [isEmojiOpen, setIsEmojiOpen] = useState(false)
@@ -319,9 +322,20 @@ export default function PostPage() {
                     {post.user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-current" />}
                   </div>
                 </div>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" onClick={() => setIsOptionsOpen(true)}>
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
+
+                <PostOptionsDialog
+                  open={isOptionsOpen}
+                  onOpenChange={(v) => setIsOptionsOpen(v)}
+                  isOwner={!!isOwner}
+                  onReport={() => toast({ title: 'Reported' })}
+                  onUnfollow={() => toast({ title: 'Unfollowed' })}
+                  onAddToFavorites={() => toast({ title: 'Added to favorites' })}
+                  onGoToPost={() => router.push(`/post/${postId}`)}
+                  onAboutThisAccount={() => router.push(`/${post.user.username}`)}
+                />
               </div>
 
               {/* Comments Section */}
