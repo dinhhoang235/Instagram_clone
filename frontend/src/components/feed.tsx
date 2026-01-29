@@ -34,7 +34,7 @@ export function Feed() {
 
     fetchPosts()
 
-    const handler = (e: Event) => {
+    const createdHandler = (e: Event) => {
       const detail = (e as CustomEvent)?.detail
       const newPost = detail?.post
       if (newPost) {
@@ -45,8 +45,31 @@ export function Feed() {
       }
     }
 
-    window.addEventListener('postCreated', handler as EventListener)
-    return () => window.removeEventListener('postCreated', handler as EventListener)
+    const updatedHandler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      const updated: PostType | undefined = detail?.post
+      if (updated) {
+        setPosts((prev) => prev.map(p => (String(p.id) === String(updated.id) ? updated : p)))
+      }
+    }
+
+    const deletedHandler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      const postId: string | number | undefined = detail?.postId
+      if (postId) {
+        setPosts((prev) => prev.filter(p => String(p.id) !== String(postId)))
+      }
+    }
+
+    window.addEventListener('postCreated', createdHandler as EventListener)
+    window.addEventListener('postUpdated', updatedHandler as EventListener)
+    window.addEventListener('postDeleted', deletedHandler as EventListener)
+
+    return () => {
+      window.removeEventListener('postCreated', createdHandler as EventListener)
+      window.removeEventListener('postUpdated', updatedHandler as EventListener)
+      window.removeEventListener('postDeleted', deletedHandler as EventListener)
+    }
   }, [])
 
   const handleLoadMore = async () => {

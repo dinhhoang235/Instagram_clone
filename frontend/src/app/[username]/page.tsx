@@ -75,6 +75,46 @@ export default function ProfilePage() {
         if (username) {
             fetchProfile()
         }
+
+        const createdHandler = (e: Event) => {
+          const detail = (e as CustomEvent)?.detail
+          const newPost = detail?.post
+          if (newPost && newPost.user?.username === username) {
+            setPosts((prev) => {
+              if (prev.find(p => p.id === newPost.id)) return prev
+              return [newPost, ...prev]
+            })
+            setUser((u) => u ? { ...u, posts_count: (u.posts_count || 0) + 1 } : u)
+          }
+        }
+
+        const updatedHandler = (e: Event) => {
+          const detail = (e as CustomEvent)?.detail
+          const updated: PostType | undefined = detail?.post
+          if (updated) {
+            setPosts((prev) => prev.map(p => (String(p.id) === String(updated.id) ? updated : p)))
+          }
+        }
+
+        const deletedHandler = (e: Event) => {
+          const detail = (e as CustomEvent)?.detail
+          const postId: string | number | undefined = detail?.postId
+          if (postId) {
+            setPosts((prev) => prev.filter(p => String(p.id) !== String(postId)))
+            setSavedPosts(prev => prev.filter(p => String(p.id) !== String(postId)))
+            setUser((u) => u ? { ...u, posts_count: Math.max(0, (u.posts_count || 1) - 1) } : u)
+          }
+        }
+
+        window.addEventListener('postCreated', createdHandler as EventListener)
+        window.addEventListener('postUpdated', updatedHandler as EventListener)
+        window.addEventListener('postDeleted', deletedHandler as EventListener)
+
+        return () => {
+            window.removeEventListener('postCreated', createdHandler as EventListener)
+            window.removeEventListener('postUpdated', updatedHandler as EventListener)
+            window.removeEventListener('postDeleted', deletedHandler as EventListener)
+        }
     }, [username])
 
     useEffect(() => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react"
 import PostOptionsDialog from "@/components/post-options-dialog"
+import EditPostDialog from "@/components/edit-post/EditPostDialog"
 import { getMyProfile } from "@/lib/services/profile"
 import { useRouter } from "next/navigation"
-import { PostType } from "@/types/post"
+import { PostType, PostImageType } from "@/types/post"
 import { likePost } from "@/lib/services/posts"
 import { renderCaptionWithTags } from "@/components/tag"
 import ShareDialog from "@/components/share-dialog"
@@ -36,14 +37,53 @@ export function Post({ post, priority = false }: PostProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isShareOpen, setIsShareOpen] = useState(false)
-  
-  const MAX_CAPTION_LENGTH = 25
-  const shouldTruncate = post.caption && post.caption.length > MAX_CAPTION_LENGTH
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
-  // compute images array (backwards compatible)
-  const images = (post.images && post.images.length > 0)
-    ? post.images.sort((a,b) => a.order - b.order)
-    : [{ id: 'main', image: post.image, order: 0 }]
+  // compute images array (backwards compatible) - memoized so it doesn't change every render
+  const images = useMemo<PostImageType[]>(() => {
+    if (post.images && post.images.length > 0) {
+      return [...post.images].sort((a, b) => a.order - b.order)
+    }
+    return [{ id: 'main', image: post.image, order: 0 }]
+  }, [post.images, post.image])
+
+  // Local editable copies so UI updates immediately after edit
+  const [localCaption, setLocalCaption] = useState(post.caption)
+  const [localLocation, setLocalLocation] = useState(post.location)
+  const [localImages, setLocalImages] = useState(images)
+
+  useEffect(() => {
+    // update local copies when the prop changes (e.g., new post data)
+    setLocalCaption(post.caption)
+    setLocalLocation(post.location)
+    setLocalImages(images)
+  }, [post.id, post.caption, post.location, images])
+
+  useEffect(() => {
+    const handler = (event: CustomEvent) => {
+      const updated: PostType = event.detail.post
+      if (String(updated.id) !== String(post.id)) return
+
+      setLocalCaption(updated.caption || '')
+      setLocalLocation(updated.location || '')
+      if (updated.images && updated.images.length > 0) {
+        const imgs = updated.images.sort((a, b) => a.order - b.order)
+        setLocalImages(imgs)
+      }
+
+      if (typeof updated.likes === 'number') setLikes(updated.likes)
+      if (typeof updated.comments === 'number') setComments(updated.comments)
+      setIsLiked(Boolean(updated.is_liked))
+      setIsSaved(Boolean(updated.is_saved))
+    }
+
+    window.addEventListener('postUpdated', handler as EventListener)
+    return () => window.removeEventListener('postUpdated', handler as EventListener)
+  }, [post.id])
+
+  const MAX_CAPTION_LENGTH = 25
+  const shouldTruncate = localCaption && localCaption.length > MAX_CAPTION_LENGTH
+
 
   useEffect(() => {
     setCurrentIndex(0)
@@ -164,12 +204,12 @@ export function Post({ post, priority = false }: PostProps) {
             </Link>
             {post.user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-500 fill-current" />}
           </div>
-          {post.location && (
+          {localLocation && (
             <>
               <span className="text-muted-foreground">•</span>
               <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                 <MapPin className="w-3 h-3" />
-                <span>{post.location}</span>
+                <span>{localLocation}</span>
               </div>
             </>
           )}
@@ -182,15 +222,21 @@ export function Post({ post, priority = false }: PostProps) {
             open={isOptionsOpen}
             onOpenChange={(v) => setIsOptionsOpen(v)}
             isOwner={isOwner}
+            hideLikes={post.hide_likes}
+            disableComments={post.disable_comments}
             onDelete={async () => {
               try {
-                // TODO: call delete endpoint
+                const { deletePost } = await import('@/lib/services/posts')
+                await deletePost(post.id)
+                // notify other parts of the app
+                try { window.dispatchEvent(new CustomEvent('postDeleted', { detail: { postId: post.id } })) } catch {}
                 toast({ title: 'Deleted' })
-              } catch {
+              } catch (err) {
+                console.error('Failed to delete post', err)
                 toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' })
               }
             }}
-            onEdit={() => router.push(`/post/${post.id}/edit`)}
+            onEdit={() => setIsEditOpen(true)}
             onShare={() => setIsShareOpen(true)}
             onCopyLink={async () => {
               try {
@@ -205,7 +251,32 @@ export function Post({ post, priority = false }: PostProps) {
             onAddToFavorites={async () => toast({ title: 'Added to favorites' })}
             onGoToPost={() => router.push(`/post/${post.id}`)}
             onAboutThisAccount={() => router.push(`/${post.user.username}`)}
+            onToggleLikeCount={async () => {
+              try {
+                const newVal = !Boolean(post.hide_likes)
+                const updated = await (await import('@/lib/services/posts')).updatePost(post.id, { hide_likes: newVal })
+                try { window.dispatchEvent(new CustomEvent('postUpdated', { detail: { post: updated } })) } catch {}
+                toast({ title: newVal ? 'Hidden like counts' : 'Shown like counts' })
+              } catch (err) {
+                console.error('Failed to toggle hide_likes', err)
+                toast({ title: 'Error', description: 'Failed to update setting', variant: 'destructive' })
+              }
+            }}
+            onTurnOffCommenting={async () => {
+              try {
+                const newVal = !Boolean(post.disable_comments)
+                const updated = await (await import('@/lib/services/posts')).updatePost(post.id, { disable_comments: newVal })
+                try { window.dispatchEvent(new CustomEvent('postUpdated', { detail: { post: updated } })) } catch {}
+                toast({ title: newVal ? 'Comments turned off' : 'Comments turned on' })
+              } catch (err) {
+                console.error('Failed to toggle comments', err)
+                toast({ title: 'Error', description: 'Failed to update setting', variant: 'destructive' })
+              }
+            }}
           />
+
+          {/* Edit dialog */}
+          <EditPostDialog open={isEditOpen} onOpenChange={(v) => setIsEditOpen(v)} postId={post.id} />
       </div>
 
       {/* Post Image */}
@@ -213,7 +284,7 @@ export function Post({ post, priority = false }: PostProps) {
         className="relative aspect-square select-none"
         onDoubleClick={handleDoubleClick}
       >
-        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill priority={priority} className="object-contain object-center bg-background" />
+        <Image src={localImages[currentIndex]?.image || images[currentIndex].image || "/placeholder.svg"} alt={localImages[currentIndex]?.alt_text || images[currentIndex].alt_text || 'Post image'} fill priority={priority} className="object-contain object-center bg-background" />
 
         {/* Double-tap heart animation */}
         {isAnimating && (
@@ -251,9 +322,9 @@ export function Post({ post, priority = false }: PostProps) {
       </div>
 
       {/* Pagination dots (moved below the image) */}
-      {images.length > 1 && (
+      {(localImages.length > 1 || images.length > 1) && (
         <div className="flex items-center justify-center gap-1 mt-2 mb-4">
-          {images.map((img, idx) => (
+          {(localImages.length > 0 ? localImages : images).map((img, idx) => (
             <button
               key={img.id}
               aria-label={`Go to photo ${idx + 1}`}
@@ -318,9 +389,9 @@ export function Post({ post, priority = false }: PostProps) {
           </Link>
           <span className="whitespace-pre-wrap break-words">
             {isExpanded || !shouldTruncate
-              ? renderCaptionWithTags(post.caption)
+              ? renderCaptionWithTags(localCaption)
               : <>
-                  {renderCaptionWithTags(post.caption.slice(0, MAX_CAPTION_LENGTH))}
+                  {renderCaptionWithTags(localCaption.slice(0, MAX_CAPTION_LENGTH))}
                   <span>... </span>
                   <button 
                     onClick={() => setIsExpanded(true)}

@@ -20,6 +20,8 @@ interface Props {
   onGoToPost?: () => void
   onToggleLikeCount?: () => void
   onTurnOffCommenting?: () => void
+  hideLikes?: boolean
+  disableComments?: boolean
   onAboutThisAccount?: () => void
 } 
 
@@ -38,9 +40,13 @@ export function PostOptionsDialog({
   onGoToPost,
   onToggleLikeCount,
   onTurnOffCommenting,
+  hideLikes,
+  disableComments,
   onAboutThisAccount,
 }: Props) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogOverlay />
@@ -60,7 +66,7 @@ export function PostOptionsDialog({
               <>
                 <button
                   onClick={() => {
-                    onDelete?.()
+                    setShowDeleteConfirm(true)
                     onOpenChange(false)
                   }}
                   className="w-full text-center py-3 border-b border-border text-red-500 font-semibold"
@@ -85,7 +91,7 @@ export function PostOptionsDialog({
                   }}
                   className="w-full text-center py-3 border-b border-border"
                 >
-                  Hide like count to others
+                  {hideLikes ? 'Show like counts to others' : 'Hide like counts to others'}
                 </button>
 
                 <button
@@ -95,7 +101,7 @@ export function PostOptionsDialog({
                   }}
                   className="w-full text-center py-3 border-b border-border"
                 >
-                  Turn off commenting
+                  {disableComments ? 'Turn on commenting' : 'Turn off commenting'}
                 </button>
 
               </>
@@ -197,6 +203,43 @@ export function PostOptionsDialog({
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>
+
+    {/* Delete confirmation rendered outside the options dialog so it isn't unmounted when options close */}
+    <Dialog open={showDeleteConfirm} onOpenChange={(v) => setShowDeleteConfirm(v)}>
+      <DialogPortal>
+        <DialogOverlay className="fixed inset-0 bg-black/50 z-[70]" />
+        <DialogPrimitive.Content className="fixed z-[80] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[440px] rounded-xl bg-background border border-border p-6 text-center">
+          <VisuallyHidden.Root asChild>
+            <DialogTitle>Delete post</DialogTitle>
+          </VisuallyHidden.Root>
+          <h3 className="text-lg font-semibold text-foreground mb-2">Delete post?</h3>
+
+          <DialogPrimitive.Description asChild>
+            <p className="text-sm text-muted-foreground mb-6">Are you sure you want to delete this post?</p>
+          </DialogPrimitive.Description>
+
+          <div className="flex flex-col">
+            <button
+              className="text-red-500 font-semibold py-3 border-t border-border"
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                try { onDelete?.() } catch {}
+              }}
+            >
+              Delete
+            </button>
+
+            <button
+              className="py-3"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
+    </>
   )
 }
 

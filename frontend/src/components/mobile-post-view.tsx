@@ -14,6 +14,7 @@ import { useAuth } from "@/components/auth-provider"
 import type { PostType } from "@/types/post"
 import useIsDark from "@/lib/hooks/useIsDark"
 import PostOptionsDialog from "@/components/post-options-dialog"
+import EditPostDialog from "@/components/edit-post/EditPostDialog"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 
@@ -49,6 +50,7 @@ export default function MobilePostView(props: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [isOptionsOpen, setIsOptionsOpen] = React.useState(false)
+  const [isEditOpen, setIsEditOpen] = React.useState(false)
   const isOwner = post?.user?.username === user?.username
 
   // Local save state fallback (in case parent onSave isn't wired)
@@ -230,10 +232,24 @@ export default function MobilePostView(props: Props) {
           open={isOptionsOpen}
           onOpenChange={(v) => setIsOptionsOpen(v)}
           isOwner={!!isOwner}
+          hideLikes={post?.hide_likes}
+          disableComments={post?.disable_comments}
+          onDelete={async () => {
+            try {
+              const { deletePost } = await import('@/lib/services/posts')
+              await deletePost(post?.id as string)
+              try { window.dispatchEvent(new CustomEvent('postDeleted', { detail: { postId: post?.id } })) } catch {}
+              toast({ title: 'Deleted' })
+            } catch (err) {
+              console.error('Failed to delete post', err)
+              toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' })
+            }
+          }}
           onReport={() => toast({ title: 'Reported' })}
           onUnfollow={() => toast({ title: 'Unfollowed' })}
           onAddToFavorites={() => toast({ title: 'Added to favorites' })}
           onShare={() => onShare()}
+          onEdit={() => setIsEditOpen(true)}
           onCopyLink={async () => {
             try {
               await navigator.clipboard.writeText(`${window.location.origin}/post/${post?.id}`)
@@ -244,7 +260,31 @@ export default function MobilePostView(props: Props) {
           }}
           onGoToPost={() => router.push(`/post/${post?.id}`)}
           onAboutThisAccount={() => router.push(`/${post?.user?.username}`)}
+          onToggleLikeCount={async () => {
+            try {
+              const newVal = !Boolean(post?.hide_likes)
+              const updated = await (await import('@/lib/services/posts')).updatePost(post?.id as string, { hide_likes: newVal })
+              try { window.dispatchEvent(new CustomEvent('postUpdated', { detail: { post: updated } })) } catch {}
+              toast({ title: newVal ? 'Hidden like counts' : 'Shown like counts' })
+            } catch (err) {
+              console.error('Failed to toggle hide_likes', err)
+              toast({ title: 'Error', description: 'Failed to update setting', variant: 'destructive' })
+            }
+          }}
+          onTurnOffCommenting={async () => {
+            try {
+              const newVal = !Boolean(post?.disable_comments)
+              const updated = await (await import('@/lib/services/posts')).updatePost(post?.id as string, { disable_comments: newVal })
+              try { window.dispatchEvent(new CustomEvent('postUpdated', { detail: { post: updated } })) } catch {}
+              toast({ title: newVal ? 'Comments turned off' : 'Comments turned on' })
+            } catch (err) {
+              console.error('Failed to toggle comments', err)
+              toast({ title: 'Error', description: 'Failed to update setting', variant: 'destructive' })
+            }
+          }}
         />
+
+        <EditPostDialog open={isEditOpen} onOpenChange={(v) => setIsEditOpen(v)} postId={post?.id ?? ''} />
       </div>
 
       {/* Image Container */}

@@ -25,6 +25,7 @@ import { createComment } from "@/lib/services/comments"
 import { renderCaptionWithTags } from "@/components/tag"
 import ShareDialog from "@/components/share-dialog"
 import PostOptionsDialog from "@/components/post-options-dialog"
+import EditPostDialog from "@/components/edit-post/EditPostDialog"
 import { sharePostWithUser } from "@/lib/services/share"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -45,6 +46,7 @@ export default function PostPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const { toast } = useToast()
   const [isOptionsOpen, setIsOptionsOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
   const isOwner = post ? post.user.username === user?.username : false
 
   // Emoji picker state
@@ -113,6 +115,36 @@ export default function PostPage() {
   useEffect(() => {
     setCurrentIndex(0)
   }, [post?.id])
+
+  // Listen for updates/deletes to refresh this page immediately
+  useEffect(() => {
+    const updatedHandler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      const updated: PostType | undefined = detail?.post
+      if (updated && String(updated.id) === String(postId)) {
+        setPost(updated)
+        setLikes(updated.likes || 0)
+        setIsLiked(Boolean(updated.is_liked))
+        setIsSaved(Boolean(updated.is_saved))
+      }
+    }
+
+    const deletedHandler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      const deletedId: string | number | undefined = detail?.postId
+      if (deletedId && String(deletedId) === String(postId)) {
+        try { router.back() } catch {}
+      }
+    }
+
+    window.addEventListener('postUpdated', updatedHandler as EventListener)
+    window.addEventListener('postDeleted', deletedHandler as EventListener)
+
+    return () => {
+      window.removeEventListener('postUpdated', updatedHandler as EventListener)
+      window.removeEventListener('postDeleted', deletedHandler as EventListener)
+    }
+  }, [postId, router])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -330,12 +362,51 @@ export default function PostPage() {
                   open={isOptionsOpen}
                   onOpenChange={(v) => setIsOptionsOpen(v)}
                   isOwner={!!isOwner}
+                  hideLikes={post.hide_likes}
+                  disableComments={post.disable_comments}
+                  onDelete={async () => {
+                    try {
+                      const { deletePost } = await import('@/lib/services/posts')
+                      await deletePost(postId)
+                      try { window.dispatchEvent(new CustomEvent('postDeleted', { detail: { postId } })) } catch {}
+                      toast({ title: 'Deleted' })
+                      router.back()
+                    } catch (err) {
+                      console.error('Failed to delete post', err)
+                      toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' })
+                    }
+                  }}
                   onReport={() => toast({ title: 'Reported' })}
                   onUnfollow={() => toast({ title: 'Unfollowed' })}
                   onAddToFavorites={() => toast({ title: 'Added to favorites' })}
+                  onEdit={() => setIsEditOpen(true)}
                   onGoToPost={() => router.push(`/post/${postId}`)}
                   onAboutThisAccount={() => router.push(`/${post.user.username}`)}
+                  onToggleLikeCount={async () => {
+                    try {
+                      const newVal = !Boolean(post.hide_likes)
+                      const updated = await (await import('@/lib/services/posts')).updatePost(postId, { hide_likes: newVal })
+                      try { window.dispatchEvent(new CustomEvent('postUpdated', { detail: { post: updated } })) } catch {}
+                      toast({ title: newVal ? 'Hidden like counts' : 'Shown like counts' })
+                    } catch (err) {
+                      console.error('Failed to toggle hide_likes', err)
+                      toast({ title: 'Error', description: 'Failed to update setting', variant: 'destructive' })
+                    }
+                  }}
+                  onTurnOffCommenting={async () => {
+                    try {
+                      const newVal = !Boolean(post.disable_comments)
+                      const updated = await (await import('@/lib/services/posts')).updatePost(postId, { disable_comments: newVal })
+                      try { window.dispatchEvent(new CustomEvent('postUpdated', { detail: { post: updated } })) } catch {}
+                      toast({ title: newVal ? 'Comments turned off' : 'Comments turned on' })
+                    } catch (err) {
+                      console.error('Failed to toggle comments', err)
+                      toast({ title: 'Error', description: 'Failed to update setting', variant: 'destructive' })
+                    }
+                  }}
                 />
+
+                <EditPostDialog open={isEditOpen} onOpenChange={(v) => setIsEditOpen(v)} postId={postId} />
               </div>
 
               {/* Comments Section */}

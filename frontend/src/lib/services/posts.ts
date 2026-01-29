@@ -52,8 +52,25 @@ export const createPost = async (formData: FormData, config?: AxiosRequestConfig
   return res.data
 } 
 
+// update a post (partial)
+export const updatePost = async (id: string | number, data: FormData | Record<string, unknown>) => {
+  if (data instanceof FormData) {
+    const res = await api.patch(`/posts/${id}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return res.data
+  } else {
+    const res = await api.patch(`/posts/${id}/`, data)
+    return res.data
+  }
+}
+
 // get popular places
 export const getPopularPlaces = async (): Promise<{ location: string; postCount: number }[]> => {
   const res = await api.get<{ location: string; postCount: number }[]>("/posts/places/popular/")
+  return res.data
+}
+
+// delete a post
+export const deletePost = async (id: string | number) => {
+  const res = await api.delete(`/posts/${id}/`)
   return res.data
 }

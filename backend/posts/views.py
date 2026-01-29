@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions
+from posts.permissions import IsOwnerOrReadOnly
 from rest_framework.decorators import action
 from posts.models import Post, Tag, PostImage
 from posts.serializers import PostSerializer
@@ -8,7 +9,8 @@ from django.db.models import Count
 
 class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    # Require authentication for write operations and ensure only owners can modify/delete
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     
     def get_queryset(self):
         queryset = Post.objects.all().select_related('user', 'user__profile').prefetch_related('tags', 'likes', 'post_images')

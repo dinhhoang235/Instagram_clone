@@ -22,4 +22,6 @@ export interface PostType {
   comments: number
   timeAgo: string
   location?: string
+  hide_likes?: boolean
+  disable_comments?: boolean
 }
