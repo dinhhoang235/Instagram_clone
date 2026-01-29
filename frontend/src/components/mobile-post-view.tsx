@@ -44,6 +44,28 @@ export default function MobilePostView(props: Props) {
   const isDark = useIsDark()
   const { user } = useAuth()
 
+  // Local save state fallback (in case parent onSave isn't wired)
+  const [isSavedState, setIsSavedState] = React.useState<boolean>(isSaved ?? false)
+  React.useEffect(() => { setIsSavedState(isSaved ?? false) }, [isSaved])
+
+  const handleSave = async () => {
+    if (!post?.id) return
+    const previous = isSavedState
+    // optimistic update
+    setIsSavedState(!previous)
+
+    try {
+      // lazy-import to avoid circular deps
+      const { savePost } = await import('@/lib/services/posts')
+      await savePost(post.id)
+      // call parent handler if provided
+      if (onSave) onSave()
+    } catch (err) {
+      console.error('Failed to toggle save', err)
+      setIsSavedState(previous)
+    }
+  }
+
   // Follow state for post author (supports both API shapes: isFollowing or is_following)
   const [isFollowingState, setIsFollowingState] = React.useState<boolean>(false)
   React.useEffect(() => {
@@ -105,7 +127,7 @@ export default function MobilePostView(props: Props) {
 
     return (
       <>
-        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill className="object-cover" />
+        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill className="object-contain" />
 
         {isAnimating && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -152,9 +174,9 @@ export default function MobilePostView(props: Props) {
   }
 
   return (
-    <div className="h-full w-full bg-white dark:bg-black flex flex-col">
+    <div className="w-full min-h-screen bg-white dark:bg-black flex flex-col overflow-auto">
       {/* Header Bar */}
-      <div className="relative flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/95 backdrop-blur-sm border-b border-gray-200/10 dark:border-white/10">
+      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-black/95 backdrop-blur-sm border-b border-gray-200/10 dark:border-white/10">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="p-0 h-auto hover:bg-transparent z-20" onClick={onBack}>
             <ChevronLeft className="w-8 h-8 text-black dark:text-white" />
@@ -163,6 +185,7 @@ export default function MobilePostView(props: Props) {
         <span className="absolute left-1/2 -translate-x-1/2 text-black dark:text-white font-semibold text-lg pointer-events-none">Post</span>
       </div>
 
+      <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 56px)' }}>
       {/* User Info Bar */}
       <div className="flex items-center justify-between px-3 py-2.5 bg-white/95 dark:bg-black/95 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
@@ -198,8 +221,8 @@ export default function MobilePostView(props: Props) {
       </div>
 
       {/* Image Container */}
-      <div className="flex-1 bg-white dark:bg-black relative" onDoubleClick={onLike}>
-        <div className="w-full h-full relative">
+      <div className="bg-white dark:bg-black relative overflow-hidden" onDoubleClick={onLike}>
+        <div className="w-full relative aspect-[4/5]">
           {post && <PostImagesCarousel post={post} isAnimating={isAnimating} />}
         </div>
       </div>
@@ -208,19 +231,27 @@ export default function MobilePostView(props: Props) {
       <div className="px-3 py-2 bg-white/95 dark:bg-black/95 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={onLike} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
-              <Heart className={`w-[26px] h-[26px] ${isLiked ? "fill-red-500 text-red-500" : "text-black dark:text-white"} transition-colors`} />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onOpenComments} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
-              <MessageCircle className="w-[26px] h-[26px] text-black dark:text-white" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={onLike} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
+                <Heart className={`w-[26px] h-[26px] ${isLiked ? "fill-red-500 text-red-500" : "text-black dark:text-white"} transition-colors`} />
+              </Button>
+              <span className="text-sm font-medium text-black dark:text-white">{likes?.toLocaleString()}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={onOpenComments} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
+                <MessageCircle className="w-[26px] h-[26px] text-black dark:text-white" />
+              </Button>
+              <span className="text-sm font-medium text-black/70 dark:text-white/70">{post?.comments ?? 0}</span>
+            </div>
+
             <Button variant="ghost" size="sm" onClick={onShare} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
               <Send className="w-[26px] h-[26px] text-black dark:text-white" />
             </Button>
           </div>
 
-          <Button variant="ghost" size="sm" onClick={onSave} className="p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
-            <Bookmark className={`w-[26px] h-[26px] ${isSaved ? (isDark ? "fill-white text-white" : "fill-black text-black") : "text-black dark:text-white"} transition-colors`} />
+          <Button variant="ghost" size="sm" onClick={handleSave} className="relative z-40 p-0 h-auto hover:bg-transparent active:scale-90 transition-transform">
+            <Bookmark className={`w-[26px] h-[26px] ${isSavedState ? (isDark ? "fill-white text-white" : "fill-black text-black") : "text-black dark:text-white"} transition-colors`} />
           </Button>
         </div>
 
@@ -233,7 +264,7 @@ export default function MobilePostView(props: Props) {
         <div className="text-black dark:text-white text-sm mb-1">
           <span className="font-semibold mr-1.5">{post?.user?.username}</span>
 
-          <div className={`text-left ${isCaptionExpanded ? '' : 'line-clamp-2'} mr-2`}>{post?.caption}</div>
+          <div className={`text-left ${isCaptionExpanded ? 'overflow-visible max-h-none' : 'line-clamp-2'} mr-2`}>{post?.caption}</div>
 
           {post?.caption && post.caption.length > 100 && !isCaptionExpanded && (
             <button
@@ -258,8 +289,9 @@ export default function MobilePostView(props: Props) {
         <div className="h-16 lg:hidden" />
 
       </div>
+      </div>
       
       <Sidebar />
     </div>
   )
-}
+} 

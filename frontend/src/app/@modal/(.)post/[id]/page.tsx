@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Comments } from "@/components/comments"
 import { Modal } from "@/components/modal"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -18,7 +18,6 @@ import useIsDark from "@/lib/hooks/useIsDark"
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
 
 import { getPostById, likePost } from "@/lib/services/posts"
-import MobilePostView from "@/components/mobile-post-view"
 import { PostType } from "@/types/post"
 import { createComment } from "@/lib/services/comments"
 import { renderCaptionWithTags } from "@/components/tag"
@@ -47,16 +46,7 @@ export default function PostModal() {
   const emojiPickerRef = useRef<HTMLDivElement | null>(null)
   const isDark = useIsDark()
 
-  // Mobile: toggle between full post view and comments panel
-  const searchParams = useSearchParams()
-  const [showComments, setShowComments] = useState(false)
 
-  useEffect(() => {
-    // If URL contains ?comments=1 or ?comments=true open comments panel on mobile
-    if (searchParams?.get("comments") === "1" || searchParams?.get("comments") === "true") {
-      setShowComments(true)
-    }
-  }, [searchParams])
 
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
@@ -165,109 +155,8 @@ export default function PostModal() {
 
   return (
     <Modal>
-      {/* Mobile View */}
-      <div className="lg:hidden flex flex-col h-screen w-full fixed inset-0 z-50 bg-white dark:bg-black" onClick={(e) => e.stopPropagation()}>
-        {!showComments ? (
-          <MobilePostView
-            post={post}
-            isLiked={isLiked}
-            isSaved={isSaved}
-            likes={likes}
-            isAnimating={isAnimating}
-            comment={comment}
-            isEmojiOpen={isEmojiOpen}
-            emojiPickerRef={emojiPickerRef}
-            commentInputRef={commentInputRef}
-            onToggleEmoji={toggleEmojiPicker}
-            onEmojiClick={onEmojiClick}
-            onLike={handleLike}
-            onSave={() => setIsSaved(prev => !prev)}
-            onShare={() => setIsShareOpen(true)}
-            onOpenComments={() => setShowComments(true)}
-            onBack={() => router.back()}
-            onAddComment={handleAddComment}
-            onSetComment={(v: string) => setComment(v)}
-          />
-        ) : (
-          <>
-            {/* Mobile Header for comments */}
-            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="p-0 h-auto hover:bg-transparent"
-                onClick={() => {
-                  // If comments was opened via ?comments=1 in URL, go back in history so the modal closes to feed.
-                  if (searchParams?.get("comments") === "1" || searchParams?.get("comments") === "true") {
-                    router.back()
-                  } else {
-                    setShowComments(false)
-                  }
-                }}
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </Button>
-              <h1 className="text-base font-semibold">Comments</h1>
-              <div className="w-6"></div>
-            </div>
-
-            {/* Comments Section - Mobile */}
-            <div className="flex-1 p-4 overflow-y-auto">
-              <Comments postId={postId} />
-            </div>
-
-            {/* Add Comment Input - Mobile */}
-            <div className="border-t p-4 flex-shrink-0">
-              <div className="flex items-center space-x-2 relative">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="flex-shrink-0 h-9 w-9"
-                  onClick={() => toggleEmojiPicker()}
-                >
-                  <Smile className="w-5 h-5" />
-                </Button>
-
-                <Input
-                  ref={commentInputRef}
-                  placeholder="Add a comment..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      handleAddComment()
-                    }
-                  }}
-                  className="flex-1"
-                />
-                {comment && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-blue-500 font-semibold p-0 h-auto hover:bg-transparent"
-                    onClick={handleAddComment}
-                  >
-                    Post
-                  </Button>
-                )}
-
-                {isEmojiOpen && (
-                  <div 
-                    ref={emojiPickerRef}
-                    className="absolute bottom-12 left-0 z-50"
-                  >
-                    <EmojiPicker theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
-                  </div>
-                )} 
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
       {/* Desktop View - Modal with Image and Sidebar */}
-      <div className="hidden lg:flex max-w-[1400px] w-full h-[90vh] mx-auto px-8 xl:px-16" onClick={handleOutsideClick}>
+      <div className="lg:flex max-w-[1400px] w-full h-[90vh] mx-auto px-8 xl:px-16" onClick={handleOutsideClick}>
         <div className="w-full h-full bg-white dark:bg-black rounded-lg shadow-2xl overflow-hidden flex" onClick={(e) => e.stopPropagation()}>
         {/* Image Section */}
         <div className="flex-1 bg-black flex items-center justify-center relative">

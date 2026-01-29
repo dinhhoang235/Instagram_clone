@@ -6,7 +6,13 @@ export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    // Prefer server-side decision via body dataset when available (set in RootLayout)
+    if (typeof document !== 'undefined' && document.body?.dataset?.mobile !== undefined) {
+      setIsMobile(document.body.dataset.mobile === '1')
+      return
+    }
+
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`) 
     const onChange = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }

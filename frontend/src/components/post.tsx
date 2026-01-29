@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, MapPin, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { PostType } from "@/types/post"
 import { likePost } from "@/lib/services/posts"
 import { renderCaptionWithTags } from "@/components/tag"
 import ShareDialog from "@/components/share-dialog"
 import { sharePostWithUser } from "@/lib/services/share"
 import { useToast } from "@/components/ui/use-toast"
+import { isMobileClient } from "@/lib/client/isMobileClient"
 
 interface PostProps {
   post: PostType
@@ -30,7 +31,6 @@ export function Post({ post, priority = false }: PostProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const router = useRouter()
-  const pathname = usePathname()
   const { toast } = useToast()
   const [isShareOpen, setIsShareOpen] = useState(false)
   
@@ -75,13 +75,13 @@ export function Post({ post, priority = false }: PostProps) {
     return count.toString()
   }
 
+
   const handleCommentClick = () => {
-    // Navigate to post detail page and open comments immediately on mobile
-    // If we're already on the post page, replace the URL instead of pushing so Back closes the modal directly
-    if (pathname === `/post/${post.id}`) {
-      router.replace(`/post/${post.id}?comments=1`)
+    // Mobile: open dedicated comments page. Desktop: open post page instead.
+    if (isMobileClient()) {
+      router.push(`/post/${post.id}/comment`)
     } else {
-      router.push(`/post/${post.id}?comments=1`)
+      router.push(`/post/${post.id}`)
     }
   }
 

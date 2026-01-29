@@ -4,6 +4,7 @@ import React, { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import AccountNav from "./AccountNav"
+import { isMobileClient } from "@/lib/client/isMobileClient"
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -12,7 +13,9 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     // When on /account/settings and on desktop, default to the Edit panel at /account/edit
     if (typeof window !== "undefined") {
-      const isDesktop = window.matchMedia("(min-width: 1024px)").matches
+      // Prefer server-side decision exposed on body.dataset, fallback to window size
+      const isDesktop = !isMobileClient()
+
       if (isDesktop && pathname === "/account/settings") {
         router.replace("/account/edit")
       }

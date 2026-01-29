@@ -17,6 +17,7 @@ import type { EmojiClickData } from "emoji-picker-react"
 import { Theme as EmojiTheme } from "emoji-picker-react"
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
 import useIsDark from "@/lib/hooks/useIsDark"
+import MobilePostView from "@/components/mobile-post-view"
 
 import { getPostById, likePost, savePost } from "@/lib/services/posts"
 import { PostType } from "@/types/post"
@@ -209,73 +210,20 @@ export default function PostPage() {
       <div className="flex">
         <Sidebar />
         
-        {/* Mobile View - Comments Only */}
-        <div className="lg:hidden flex flex-col h-screen w-full fixed inset-0 z-50 bg-white dark:bg-black">
-          {/* Mobile Header */}
-          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="p-0 h-auto hover:bg-transparent"
-              onClick={() => router.back()}
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </Button>
-            <h1 className="text-base font-semibold">Comments</h1>
-            <div className="w-6"></div>
-          </div>
-
-          {/* Comments Section - Mobile */}
-          <div className="flex-1 p-4 overflow-y-auto">
-            <Comments postId={postId} />
-          </div>
-
-          {/* Add Comment Input - Mobile */}
-          <div className="border-t p-4 flex-shrink-0">
-            <div className="flex items-center space-x-2 relative">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="flex-shrink-0 h-9 w-9"
-                onClick={() => toggleEmojiPicker()}
-              >
-                <Smile className="w-5 h-5" />
-              </Button>
-
-              <Input
-                ref={commentInputRef}
-                placeholder="Add a comment..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    handleAddComment()
-                  }
-                }}
-                className="flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-              {comment && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-blue-500 font-semibold p-0 h-auto hover:bg-transparent"
-                  onClick={handleAddComment}
-                >
-                  Post
-                </Button>
-              )}
-
-              {isEmojiOpen && (
-                <div 
-                  ref={emojiPickerRef}
-                  className="absolute bottom-12 left-0 z-50"
-                >
-                  <EmojiPicker theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} width={325} height={333} searchDisabled={true} previewConfig={{ showPreview: false }} />
-                </div>
-              )}
-            </div>
-          </div> 
+        {/* Mobile View */}
+        <div className="lg:hidden flex flex-col h-screen w-full fixed inset-0 z-50 bg-white dark:bg-black" onClick={(e) => e.stopPropagation()}>
+          <MobilePostView
+            post={post}
+            isLiked={isLiked}
+            isSaved={isSaved}
+            likes={likes}
+            isAnimating={isAnimating}
+            onLike={handleLike}
+            onSave={() => setIsSaved(prev => !prev)}
+            onShare={() => setIsShareOpen(true)}
+            onOpenComments={() => router.push(`/post/${postId}/comment`)}
+            onBack={() => router.back()}
+          />
         </div>
 
         {/* Desktop View - Full Layout */}

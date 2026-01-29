@@ -16,26 +16,30 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+import { isMobile } from "@/lib/isMobile"
+
+export default async function RootLayout({
   children,
   modal,
 }: Readonly<{
   children: React.ReactNode;
   modal: React.ReactNode;
 }>) {
+  const mobile = await isMobile()
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={inter.className}>
+      <body data-mobile={mobile ? "1" : "0"} className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <MessageProvider>
               <NotificationProvider>
                 {children}
-                {modal}
+                {!mobile && modal}
               </NotificationProvider>
             </MessageProvider>
           </AuthProvider>

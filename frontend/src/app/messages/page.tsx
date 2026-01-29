@@ -12,6 +12,10 @@ import type { MessageListType } from "@/types/chat"
 import type { MinimalUser } from "@/types/search"
 import { SendFirstMessageView } from "@/components/send-first-message-view"
 import { useConversationStore } from "@/stores/useConversationStore"
+import dynamic from 'next/dynamic'
+
+// Client-only import of Post page so we can render it inline when pathname changes
+const PostPageClient = dynamic(() => import('@/app/post/[id]/page'), { ssr: false })
 
 
 export default function MessagesPage() {
@@ -32,24 +36,48 @@ export default function MessagesPage() {
         redirect("/login")
     }
 
-    // Function to save active chat to localStorage
+    // Function to save active chat to sessionStorage (persists across reloads but not when browser/tab closes)
     const saveActiveChat = (chat: MessageListType | null) => {
         if (chat) {
-            localStorage.setItem('activeChat', JSON.stringify(chat));
+            try {
+                sessionStorage.setItem('activeChat', JSON.stringify(chat));
+            } catch (e) {
+                console.warn('Failed to save activeChat to sessionStorage', e);
+            }
             setSelectedUser(null); // Clear selected user when viewing existing chat
         } else {
-            localStorage.removeItem('activeChat');
+            try { sessionStorage.removeItem('activeChat') } catch { }
         }
         setActiveChat(chat);
     };
 
-    // Don't restore active chat automatically - user should select manually
-    // This provides a cleaner experience similar to Instagram web
+    // Restore active chat on mount so a page refresh preserves the open chat on desktop and mobile
     useEffect(() => {
-        // Clear any saved active chat on mount to ensure clean state
-        localStorage.removeItem('activeChat');
-        console.log("🔄 Cleared active chat - user will select manually");
-    }, []);
+        try {
+            const raw = sessionStorage.getItem('activeChat')
+            if (!raw) {
+                console.log('🔄 No saved active chat to restore')
+                return
+            }
+
+            const parsed = JSON.parse(raw)
+            if (parsed && parsed.id) {
+                // Try to reconcile with conversation store
+                const existing = conversations.find(c => c.id === parsed.id)
+                if (existing) {
+                    console.log('♻️ Restoring active chat from sessionStorage (synced with store):', existing.id)
+                    setActiveChat(existing)
+                } else {
+                    console.log('♻️ Restoring active chat from sessionStorage (not in store):', parsed.id)
+                    setActiveChat(parsed)
+                }
+            }
+        } catch (err) {
+            console.error('Failed to restore active chat from sessionStorage:', err)
+            try { sessionStorage.removeItem('activeChat') } catch { }
+        }
+    // Re-run when conversations changes so we can reconcile a restored chat with the latest store
+    }, [conversations])
 
     // Removed - we don't want to validate or keep activeChat from previous sessions
     // User should manually select a conversation each time they visit the page
@@ -58,6 +86,25 @@ export default function MessagesPage() {
     useEffect(() => {
         console.log('🧪 State change - selectedUser:', selectedUser?.username, 'activeChat:', activeChat?.id);
     }, [selectedUser, activeChat])
+
+    // Ensure Chat is closed when user navigates away from /messages (fixes mobile SPA navigation)
+    useEffect(() => {
+        // If pathname is missing or we're still on /messages, do nothing
+        if (!pathname || pathname === "/messages") return
+
+        // If navigating to a post page (modal-like route on desktop), keep the active chat so
+        // the user can return to it with the back button. This prevents losing the open chat
+        // when navigating to /post/[id] and back.
+        if (pathname.startsWith('/post/')) {
+            console.log('ℹ️ Pathname is a post route, keeping active chat so back restores it:', pathname)
+            return
+        }
+
+        console.log('🔁 Pathname changed, closing active chat to allow route change:', pathname)
+        // Close any open chat or selected user view so the new route can render
+        saveActiveChat(null)
+        setSelectedUser(null)
+    }, [pathname])
 
     // Keep the activeChat object in sync with the conversation store
     // This ensures realtime updates (presence/unread/lastMessage) reflect in the open Chat
@@ -79,6 +126,12 @@ export default function MessagesPage() {
             setActiveChat(updated)
         }
     }, [conversations, activeChat])
+
+    // If path is a post page, render PostPage inline to support SPA mobile navigation
+    if (pathname && pathname.startsWith('/post/')) {
+        console.log('🧭 Rendering PostPage inline from MessagesPage for SPA navigation:', pathname)
+        return <PostPageClient />
+    }
 
     return (
         <div className="min-h-screen bg-background flex">

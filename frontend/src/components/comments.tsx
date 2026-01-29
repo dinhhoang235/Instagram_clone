@@ -170,8 +170,13 @@ export function Comments({ postId }: CommentsProps) {
             <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gray-500"></div>
           </div>
         ) : comments.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">
-            No comments yet. Be the first to comment!
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-black'}`}>
+                No comments yet.
+              </h2>
+              <p className="text-sm mt-2 text-muted-foreground">Start the conversation.</p>
+            </div>
           </div>
         ) : (
           Array.isArray(comments) && comments.map((comment) => (
