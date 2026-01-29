@@ -230,7 +230,7 @@ export function PostOptionsDialog({
             </button>
 
             <button
-              className="py-3"
+              className="py-3 border-t border-border "
               onClick={() => setShowDeleteConfirm(false)}
             >
               Cancel
