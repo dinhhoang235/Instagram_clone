@@ -13,7 +13,7 @@ import { getPostById, updatePost } from "@/lib/services/posts"
 import { toast } from "sonner"
 import EmojiPicker, { EmojiClickData, Theme as EmojiTheme } from "emoji-picker-react"
 import useIsDark from "@/lib/hooks/useIsDark"
-import type { PostType } from "@/types/post"
+import type { PostType, PostImageType } from "@/types/post"
 
 interface EditPostDialogProps {
   open: boolean
@@ -27,7 +27,7 @@ export default function EditPostDialog({ open, onOpenChange, postId }: EditPostD
   const [caption, setCaption] = useState("")
   const [location, setLocation] = useState("")
   const [images, setImages] = useState<string[]>([])
-  const [altTexts, setAltTexts] = useState<Record<number, string>>({})
+  const [altTexts, setAltTexts] = useState<string[]>([])
   const [hideLikes, setHideLikes] = useState(false)
   const [disableComments, setDisableComments] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -57,12 +57,11 @@ export default function EditPostDialog({ open, onOpenChange, postId }: EditPostD
         })
         setImages(imgs)
 
-        const alts: Record<number, string> = {}
-        type ImgObj = { alt_text?: string; alt?: string }
-        (p.images || []).forEach((img: ImgObj, idx: number) => {
-          alts[idx] = img?.alt_text ?? img?.alt ?? ''
+        const altsArr: string[] = (p.images || []).map((img) => {
+          if (!img || typeof img === 'string') return ''
+          return (img as PostImageType).alt_text ?? (img as { alt?: string }).alt ?? ''
         })
-        setAltTexts(alts)
+        setAltTexts(altsArr)
       })
       .catch((err) => {
         console.error(err)
@@ -97,9 +96,8 @@ export default function EditPostDialog({ open, onOpenChange, postId }: EditPostD
         disable_comments: disableComments,
       }
 
-      if (Object.keys(altTexts).length > 0) {
+      if (altTexts.length > 0) {
         const ordered = images.map((_, idx) => altTexts[idx] || '')
-        // @ts-expect-error backend accepts array
         payload.alt_texts = ordered
       }
 
@@ -296,7 +294,7 @@ export default function EditPostDialog({ open, onOpenChange, postId }: EditPostD
                             type="text"
                             placeholder="Write alt text..."
                             value={altTexts[idx] || ''}
-                            onChange={(e) => setAltTexts(prev => ({ ...prev, [idx]: e.target.value }))}
+                            onChange={(e) => setAltTexts(prev => { const next = prev.slice(); next[idx] = e.target.value; return next })}
                             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
                           />
                         </div>

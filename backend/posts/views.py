@@ -64,6 +64,42 @@ class PostViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(self.get_serializer(post, context=self.get_serializer_context()).data, status=201, headers=headers)
         
+    def partial_update(self, request, *args, **kwargs):
+        """Handle updating alt_texts for existing images in a post."""
+        import json
+
+        alt_texts_raw = request.data.get('alt_texts')
+        alt_texts = None
+        if alt_texts_raw is not None:
+            try:
+                # alt_texts may be a JSON string or already a list
+                if isinstance(alt_texts_raw, str):
+                    alt_texts = json.loads(alt_texts_raw)
+                else:
+                    alt_texts = alt_texts_raw
+            except Exception:
+                alt_texts = None
+
+        # Perform the normal partial update first
+        response = super().partial_update(request, *args, **kwargs)
+
+        # If alt_texts provided, update PostImage.alt_text fields
+        if isinstance(alt_texts, list):
+            post = self.get_object()
+            post_images = list(post.post_images.order_by('order'))
+            for i, pi in enumerate(post_images):
+                if i < len(alt_texts):
+                    pi.alt_text = alt_texts[i] or None
+                else:
+                    # if fewer alt_texts provided, clear the rest
+                    pi.alt_text = None
+                pi.save(update_fields=['alt_text'])
+
+            # Re-serialize updated post into response
+            response.data = self.get_serializer(post, context=self.get_serializer_context()).data
+
+        return response
+
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def feed(self, request):
         user = request.user
