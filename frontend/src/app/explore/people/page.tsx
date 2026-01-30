@@ -136,13 +136,7 @@ export default function ExplorePeoplePage() {
               </div>
             )}
 
-            {filteredUsers.length > 0 && !searchQuery && (
-              <div className="text-center py-6">
-                <Button variant="ghost" className="text-muted-foreground">
-                  Load more suggestions
-                </Button>
-              </div>
-            )}
+
           </div>
         </main>
       </div>

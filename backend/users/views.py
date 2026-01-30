@@ -184,7 +184,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
             if profile.user_id not in seen:
                 all_profiles.append(profile)
                 seen.add(profile.user_id)
-            if len(all_profiles) >= 10:
+            if len(all_profiles) >= 20:
                 break
 
         from users.serializers import SuggestedUserSerializer  # Đảm bảo import
