@@ -107,13 +107,18 @@ export default function ExplorePage() {
 
                                             >
                                                 <div key={post.id} className="aspect-square relative group cursor-pointer">
-                                                    <Image
-                                                        src={post.image}
-                                                        alt={post.caption || "Explore post"}
-                                                        fill
-                                                        priority={idx === 0}
-                                                        className="object-cover"
-                                                    />
+                                                    {post.image ? (
+                                                        <Image
+                                                            src={post.image}
+                                                            alt={post.caption || "Explore post"}
+                                                            fill
+                                                            priority={idx === 0}
+                                                            className="object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-muted flex items-center justify-center text-sm text-muted-foreground">No image</div>
+                                                    )}
+
                                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4 text-white">
                                                         <div className="flex items-center space-x-1">
                                                             <Heart className="w-5 h-5 fill-white" />
