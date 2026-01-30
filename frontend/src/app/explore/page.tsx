@@ -99,7 +99,7 @@ export default function ExplorePage() {
                                     ) : posts.length === 0 ? (
                                         <p className="col-span-3 text-center py-8 text-muted-foreground">No posts found.</p>
                                     ) : (
-                                        posts.map((post) => (
+                                        posts.map((post, idx) => (
                                             <Link
                                                 key={post.id}
                                                 href={`/post/${post.id}`}
@@ -111,6 +111,7 @@ export default function ExplorePage() {
                                                         src={post.image}
                                                         alt={post.caption || "Explore post"}
                                                         fill
+                                                        priority={idx === 0}
                                                         className="object-cover"
                                                     />
                                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4 text-white">

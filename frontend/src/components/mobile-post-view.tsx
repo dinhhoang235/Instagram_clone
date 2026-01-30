@@ -136,7 +136,7 @@ export default function MobilePostView(props: Props) {
 
     return (
       <>
-        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill className="object-contain" />
+        <Image src={images[currentIndex].image || "/placeholder.svg"} alt={images[currentIndex].alt_text || 'Post image'} fill priority={currentIndex === 0} className="object-contain" />
 
         {isAnimating && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

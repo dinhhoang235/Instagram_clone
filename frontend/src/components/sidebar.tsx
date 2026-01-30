@@ -14,7 +14,6 @@ import {
   Instagram,
   LogOut,
   Settings,
-  Clock,
   Bookmark,
   Moon,
   HelpCircle,
@@ -67,10 +66,11 @@ const mobileNavigation = [
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, logout, user: authUser } = useAuth()
   const { isConnected, isConnecting } = useWebSocket()
   const isNotificationsPage = pathname === "/notifications"
   const [navigation, setNavigation] = useState(getNavigation(""))
+  const [myUsername, setMyUsername] = useState<string | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
@@ -102,11 +102,15 @@ export function Sidebar() {
   }
 
   useEffect(() => {
+    // prefer auth context username first so links are available immediately after login
+    if (authUser?.username) setMyUsername(authUser.username)
+
     if (isAuthenticated) {
       const fetchProfile = async () => {
         try {
           const profile = await getMyProfile()
           setNavigation(getNavigation(profile.username, profile.avatar))
+          setMyUsername(profile.username)
           // Apply user's saved theme preference if available (default to 'light')
           if (profile && profile.theme) {
             setTheme(profile.theme)
@@ -117,7 +121,7 @@ export function Sidebar() {
       }
       fetchProfile()
     }
-  }, [isAuthenticated, setTheme])
+  }, [isAuthenticated, setTheme, authUser])
 
   const handleLogout = () => {
     logout()
@@ -413,11 +417,7 @@ export function Sidebar() {
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => router.push('/account/activity')} className="px-3 py-3">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Your activity
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => router.push('/saved')} className="px-3 py-3">
+                <DropdownMenuItem onSelect={() => router.push(myUsername ? `/${myUsername}/saved` : '/saved')} className="px-3 py-3">
                   <Bookmark className="w-4 h-4 mr-2" />
                   Saved
                 </DropdownMenuItem>
