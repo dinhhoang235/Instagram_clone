@@ -22,13 +22,14 @@ class CustomTokenObtainPairSerializer(serializers.Serializer):
         )
 
         if user is None:
-            raise serializers.ValidationError({
-                "username_or_email": ("No user found with this username/email.")
-            })
+            provided = (username_or_email or "").strip()
+            if "@" in provided:
+                raise serializers.ValidationError({"email": "No user found with this email."})
+            raise serializers.ValidationError({"username": "No user found with this username."})
 
         authenticated_user = authenticate(username=user.username, password=password)
         if authenticated_user is None:
-            raise serializers.ValidationError({"password": ("Invalid credentials.")})
+            raise serializers.ValidationError({"password": ("Invalid password.")})
 
         refresh = self.get_token(authenticated_user)
 

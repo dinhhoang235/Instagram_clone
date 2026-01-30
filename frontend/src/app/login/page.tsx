@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Instagram } from "lucide-react"
+import { Instagram, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,12 +18,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [usernameError, setUsernameError] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const router = useRouter()
   const { login } = useAuth()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
+    setUsernameError(null)
+    setPasswordError(null)
     try {
       const token = await loginApi({
         username_or_email:email,
@@ -36,14 +43,50 @@ export default function LoginPage() {
       router.push("/")
     } catch (error: unknown) {
       console.error("Login failed:", error)
-      let message = "Something went wrong."
-      if (error instanceof Error) {
+      let message = "Login failed."
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { data?: unknown } }
+        const data = apiError.response?.data as Record<string, unknown> | undefined
+
+        const firstMsg = (v: unknown): string | null => {
+          if (v == null) return null
+          if (Array.isArray(v)) return String(v[0])
+          if (typeof v === 'string') return v
+          return String(v)
+        }
+
+        if (data) {
+          const usernameVal = (data['username_or_email'] ?? data['username'] ?? data['email']) as unknown
+          const passwordVal = data['password'] as unknown
+          const nonField = data['non_field_errors'] as unknown
+          const detail = data['detail'] as unknown
+
+          const u = firstMsg(usernameVal) || "No user found with this username or email."
+          const p = firstMsg(passwordVal) || "Invalid password."
+
+          if (usernameVal) {
+            setUsernameError(u)
+          }
+          if (passwordVal) {
+            setPasswordError(p)
+          }
+
+          if (nonField) {
+            message = firstMsg(nonField) || message
+            setError(message)
+          }
+
+          if (!usernameVal && !passwordVal && !nonField && detail) {
+            message = firstMsg(detail) || message
+            setError(message)
+          }
+        } else {
+          setError(message)
+        }
+      } else if (error instanceof Error) {
         message = error.message
-      } else if (error && typeof error === 'object' && 'response' in error) {
-        const apiError = error as { response?: { data?: { detail?: string } } }
-        message = apiError.response?.data?.detail || "Login failed."
+        setError(message)
       }
-      alert(message)
     } finally {
       setIsLoading(false)
     }
@@ -68,29 +111,53 @@ export default function LoginPage() {
                   type="text"
                   placeholder="Email or username"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setUsernameError(null); }}
                   required
                 />
+                {usernameError && (
+                  <p className="mt-2 text-sm text-red-600" role="alert">{usernameError}</p>
+                )}
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setPasswordError(null); }}
+                    className="pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="flex justify-end mt-2">
                   <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
                     Forgot password?
                   </Link>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                {passwordError && (
+                  <p className="mt-2 text-sm text-red-600" role="alert">
+                    {passwordError}
+                  </p>
+                )}
               </div>
               <Button type="submit" className="w-full bg-black text-white text-xs" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
+              {error && (
+                <p className="mt-3 text-sm text-red-600 text-center" role="alert">{error}</p>
+              )}
             </form>
 
             <div className="mt-6">
