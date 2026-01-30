@@ -90,6 +90,57 @@ docker compose exec backend python manage.py makemigrations
 docker compose exec backend python manage.py migrate
 ```
 
+**Seeding fake data (development only)** ✅
+Run the seeder locally (from project root):
+
+```bash
+cd backend
+python manage.py seed_fake_data --users 30 --posts-per-user 3 --images-per-post 1
+```
+
+Example — full command with most flags (local):
+
+```bash
+# from project root (single-line) or run directly inside backend
+cd backend && python manage.py seed_fake_data \
+  --users 30 \
+  --posts-per-user 3 \
+  --images-per-post 2 \
+  --comments-per-post 5 \
+  --max-days-ago 180 \
+  --verified-chance 0.08 \
+  --private-chance 0.25 \
+  --save-posts-chance 0.7 \
+  --max-saved-per-user 30 \
+  --min-image-posts-per-user 1 \
+  --image-chance 0.6 \
+  --clear
+```
+
+Or run inside Docker (same flags):
+
+```bash
+docker compose exec backend python manage.py seed_fake_data --users 50 --posts-per-user 4 --images-per-post 2 --comments-per-post 5 --max-days-ago 180 --verified-chance 0.08 --private-chance 0.25 --save-posts-chance 0.7 --max-saved-per-user 30 --min-image-posts-per-user 1 --image-chance 0.6 --clear
+```
+
+Useful flags:
+- `--users N` (default 20) — number of fake users to create
+- `--posts-per-user N` (default 3)
+- `--images-per-post N` (default 1)
+- `--comments-per-post N` (default 3)
+- `--clear` — delete generated fake users/posts/comments/follows before seeding
+- `--max-days-ago N` (default 365) — randomize post timestamps up to N days in the past
+- `--min-image-posts-per-user N` (default 1) — ensure each user has at least N posts with images
+- `--image-chance F` (0-1, default 0.7) — probability a non-required post will have an image
+- `--verified-chance F` (0-1, default 0.05) — probability a profile is verified
+- `--private-chance F` (0-1, default 0.2) — probability a profile is private
+- `--save-posts-chance F` (0-1, default 0.5) — probability a user will save posts
+- `--max-saved-per-user N` (default 20)
+
+Notes:
+- Generated users use password `password123` by default — only use for local/dev testing.
+- Seeder downloads images from Picsum when online; falls back to generated images if offline.
+
 **View logs**:
 ```bash
 docker compose logs backend

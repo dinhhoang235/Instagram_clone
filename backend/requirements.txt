@@ -9,3 +9,5 @@ channels>=4.0.0
 channels_redis>=4.0.0
 uvicorn[standard]>=0.24.0
 django-redis>=5.2.0
+Faker
+requests
