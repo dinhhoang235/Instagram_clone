@@ -122,6 +122,8 @@ export function Chat({
     if (!last.isValid()) return 'Offline'
 
     const diffMinutes = Math.max(0, dayjs().diff(last, 'minute'))
+    
+    if (diffMinutes === 0) return 'Active now'
     if (diffMinutes < 60) return `Active ${diffMinutes}m ago`
 
     const diffHours = Math.floor(diffMinutes / 60)
@@ -138,7 +140,20 @@ export function Chat({
   const isDark = useIsDark()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const fileUploadRef = useRef<HTMLInputElement>(null)
+  const heartbeatIntervalRef = useRef<number | null>(null)
+  const visibilityCleanupRef = useRef<(() => void) | null>(null)
   const [detectedPartnerId, setDetectedPartnerId] = useState<number | null>(null)
+
+  // Presence leader election (localStorage lease)
+  const tabIdRef = useRef<string>(Math.random().toString(36).slice(2))
+  const isLeaderRef = useRef<boolean>(false)
+  const leaderCheckIntervalRef = useRef<number | null>(null)
+  const LEASE_KEY = (id: number | null) => `presence_leader_${id}`
+  const LEASE_DURATION = 5000 // ms
+  const LEASE_RENEW = 4000 // ms
+  const VISIBLE_HEARTBEAT = 25000 // ms
+  const HIDDEN_HEARTBEAT = 60000 // ms
+
 
   // Delete confirmation modal state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -440,90 +455,299 @@ export function Chat({
   
   useEffect(() => {
     if (!chatId) return
-    const socket = createChatSocket(chatId)
-    socketRef.current = socket
 
-    socket.onopen = () => {
-      setIsConnected(true)
-      // Always mark messages as read when the chat window connects
-      console.log("📲 Chat socket connected, marking messages as read");
-      sendMarkRead()
-    }
-    socket.onclose = () => setIsConnected(false)
-    socket.onerror = () => setIsConnected(false)
+    const reconnectTimerRef = { current: null as number | null }
+    const retryCountRef = { current: 0 }
+    const shouldReconnectRef = { current: true }
 
-    socket.onmessage = (e) => {
+    // Helper: send presence ping if socket open
+    const sendPresencePing = () => {
       try {
-        const data = JSON.parse(e.data)
-
-        if (data.type === "read_receipt") {
-          console.log("✅ Received read receipt:", data);
-          
-          // Instagram-style read receipt handling:
-          // Mark ALL messages as read by this reader up to this point
-          // This makes it more consistent with Instagram's behavior
-          setMessages(prev =>
-            prev.map((m) => {
-              // Only update messages older than or equal to the one being marked as read
-              // AND only our own messages (read receipts are only for our messages)
-              if (m.id <= data.message_id && m.isOwn) {
-                const updatedReadByIds = m.readByIds ? [...new Set([...m.readByIds, data.reader_id])] : [data.reader_id];
-                console.log(`✏️ Updating message ${m.id} readByIds:`, updatedReadByIds);
-                return {
-                  ...m,
-                  readByIds: updatedReadByIds,
-                };
-              }
-              return m;
-            })
-          );
-          return;
+        const s = socketRef.current
+        if (s && s.readyState === WebSocket.OPEN) {
+          s.send(JSON.stringify({ type: "presence_ping" }))
         }
-        
-        // Handle regular message
-        const newMessage = { 
-          ...data, 
-          id: data.id || data.message_id, // Normalize ID field
-          readByIds: Array.isArray(data.readByIds) ? data.readByIds : [],
-          // Ensure sender_id is present in the message
-          sender_id: data.sender_id || null
-        };
-        console.log("📩 New message received:", newMessage);
-        
-        // If we receive a message with sender_id and it's not from current user,
-        // this is likely our partner - store this ID
-        if (newMessage.sender_id && !newMessage.isOwn && newMessage.sender_id !== currentUserId) {
-          console.log("⭐ Found partner ID from message:", newMessage.sender_id);
-          setDetectedPartnerId(newMessage.sender_id);
-          
-          // Automatically mark messages as read when we receive a message
-          // This is how Instagram handles it
-          setTimeout(() => {
-            sendMarkRead();
-          }, 500); // Small delay to seem more natural
-        } else {
-          // For messages from ourselves, we already consider them read by us
-          if (newMessage.isOwn && !newMessage.readByIds.includes(currentUserId)) {
-            newMessage.readByIds.push(currentUserId);
-          }
-        }
-
-        setMessages(prev => [...prev, newMessage])
-        setShouldScrollToBottom(true) // Scroll to bottom when receiving new message
-
-        // If message is from partner, mark as read (with a small delay to match Instagram)
-        if (data.sender_id && data.sender_id !== currentUserId) {
-          setTimeout(() => {
-            sendMarkRead();
-          }, 500);
-        }
-      } catch (error) {
-        console.error("WebSocket message parse error:", error)
+      } catch {
+        // ignore
       }
     }
 
+    // Start/stop leader heartbeat according to visibility
+    const startLeaderHeartbeat = () => {
+      // only leader should start interval
+      if (!isLeaderRef.current) return
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current)
+        heartbeatIntervalRef.current = null
+      }
+      const interval = document.hidden ? HIDDEN_HEARTBEAT : VISIBLE_HEARTBEAT
+      // send an immediate ping and schedule
+      sendPresencePing()
+      heartbeatIntervalRef.current = window.setInterval(() => {
+        if (isLeaderRef.current) sendPresencePing()
+      }, interval) as unknown as number
+
+      // ensure visibility changes restart interval with appropriate freq
+      const handleVisibility = () => {
+        if (!isLeaderRef.current) return
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current)
+          heartbeatIntervalRef.current = null
+        }
+        const nextInterval = document.hidden ? HIDDEN_HEARTBEAT : VISIBLE_HEARTBEAT
+        heartbeatIntervalRef.current = window.setInterval(() => {
+          if (isLeaderRef.current) sendPresencePing()
+        }, nextInterval) as unknown as number
+      }
+
+      document.addEventListener("visibilitychange", handleVisibility)
+      visibilityCleanupRef.current = () => document.removeEventListener("visibilitychange", handleVisibility)
+    }
+
+    const stopLeaderHeartbeat = () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current)
+        heartbeatIntervalRef.current = null
+      }
+      if (visibilityCleanupRef.current) {
+        visibilityCleanupRef.current()
+        visibilityCleanupRef.current = null
+      }
+    }
+
+    const connect = () => {
+      // Close previous socket if exists
+      try {
+        if (socketRef.current) {
+          socketRef.current.close()
+        }
+      } catch {
+        // ignore
+      }
+
+      const socket = createChatSocket(chatId)
+      socketRef.current = socket
+
+      socket.onopen = () => {
+        retryCountRef.current = 0
+        setIsConnected(true)
+        console.log("📲 Chat socket connected, marking messages as read");
+        sendMarkRead()
+
+        // When socket opens, if this tab is leader start leader heartbeat
+        try {
+          if (isLeaderRef.current) {
+            startLeaderHeartbeat()
+          }
+        } catch (e) {
+          console.warn("Failed to start presence heartbeat", e)
+        }
+
+        // Also ensure we listen for visibility/focus to send immediate ping on interaction
+        const onFocusOrInteraction = () => {
+          // Send immediate presence ping (even if not leader) to update TTL and show "Active now"
+          sendPresencePing()
+        }
+
+        window.addEventListener('focus', onFocusOrInteraction)
+        window.addEventListener('keydown', onFocusOrInteraction)
+        // Keep references to cleanup via visibilityCleanupRef as well
+        const prev = visibilityCleanupRef.current
+        visibilityCleanupRef.current = () => {
+          try { window.removeEventListener('focus', onFocusOrInteraction) } catch {}
+          try { window.removeEventListener('keydown', onFocusOrInteraction) } catch {}
+          if (prev) prev()
+        }
+      }
+
+      socket.onclose = (event) => {
+        setIsConnected(false)
+        try {
+          // stop heartbeat regardless
+          stopLeaderHeartbeat()
+        } catch (e) {
+          console.warn("Failed to clean up heartbeat", e)
+        }
+
+        // Reconnect with exponential backoff if needed
+        if (shouldReconnectRef.current && event.code !== 1000) {
+          const retry = retryCountRef.current
+          const delay = Math.min(30000, 1000 * Math.pow(2, retry))
+          console.log(`Chat socket closed unexpectedly, reconnecting in ${delay}ms (retry ${retry})`)
+          reconnectTimerRef.current = window.setTimeout(() => {
+            retryCountRef.current += 1
+            connect()
+          }, delay) as unknown as number
+        }
+      }
+
+      socket.onerror = () => setIsConnected(false)
+
+      socket.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data)
+
+          if (data.type === "read_receipt") {
+            console.log("✅ Received read receipt:", data);
+            setMessages(prev =>
+              prev.map((m) => {
+                if (m.id <= data.message_id && m.isOwn) {
+                  const updatedReadByIds = m.readByIds ? [...new Set([...m.readByIds, data.reader_id])] : [data.reader_id];
+                  return {
+                    ...m,
+                    readByIds: updatedReadByIds,
+                  };
+                }
+                return m;
+              })
+            );
+            return;
+          }
+
+          const newMessage = {
+            ...data,
+            id: data.id || data.message_id,
+            readByIds: Array.isArray(data.readByIds) ? data.readByIds : [],
+            sender_id: data.sender_id || null
+          }
+
+          if (newMessage.sender_id && !newMessage.isOwn && newMessage.sender_id !== currentUserId) {
+            setDetectedPartnerId(newMessage.sender_id)
+            setTimeout(() => sendMarkRead(), 500)
+          } else if (newMessage.isOwn && !newMessage.readByIds.includes(currentUserId)) {
+            newMessage.readByIds.push(currentUserId)
+          }
+
+          setMessages(prev => [...prev, newMessage])
+          setShouldScrollToBottom(true)
+
+          if (data.sender_id && data.sender_id !== currentUserId) {
+            setTimeout(() => sendMarkRead(), 500)
+          }
+        } catch (error) {
+          console.error("WebSocket message parse error:", error)
+        }
+      }
+    }
+
+    // Start initial connection
+    connect()
+
+    // Capture tab id for use in cleanup to avoid ref-change races
+    const myTabId = tabIdRef.current
+
+    // Leader election: attempt to acquire/renew lease periodically
+    const key = LEASE_KEY(currentUserId)
+    const tryAcquireLease = () => {
+      if (!currentUserId) return
+      try {
+        const now = Date.now()
+        const raw = localStorage.getItem(key)
+        const data = raw ? JSON.parse(raw) : null
+
+        // If missing or expired, try to claim
+        if (!data || data.expires < now) {
+          const newVal = { id: tabIdRef.current, expires: now + LEASE_DURATION }
+          localStorage.setItem(key, JSON.stringify(newVal))
+          // read back to verify
+          const check = JSON.parse(localStorage.getItem(key) || 'null')
+          if (check && check.id === tabIdRef.current) {
+            // acquired
+            isLeaderRef.current = true
+            startLeaderHeartbeat()
+          } else {
+            isLeaderRef.current = false
+            stopLeaderHeartbeat()
+          }
+          return
+        }
+
+        // If existing owner is us, renew expiry
+        if (data.id === tabIdRef.current) {
+          data.expires = now + LEASE_DURATION
+          localStorage.setItem(key, JSON.stringify(data))
+          if (!isLeaderRef.current) {
+            isLeaderRef.current = true
+            startLeaderHeartbeat()
+          }
+        } else {
+          // someone else is leader
+          if (isLeaderRef.current) {
+            isLeaderRef.current = false
+            stopLeaderHeartbeat()
+          }
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+
+    // Run initial try and set periodic renew
+    tryAcquireLease()
+    leaderCheckIntervalRef.current = window.setInterval(tryAcquireLease, LEASE_RENEW) as unknown as number
+
+    // Listen to storage events so other tabs can notify leadership changes quickly
+    const onStorage = (ev: StorageEvent) => {
+      if (!ev.key || ev.key !== key) return
+      try {
+        const now = Date.now()
+        const newData = ev.newValue ? JSON.parse(ev.newValue) : null
+        if (!newData || newData.expires < now) {
+          // no valid leader
+          // allow next tick to try acquire
+        } else {
+          // update leader flag
+          const amLeader = newData.id === tabIdRef.current
+          if (amLeader && !isLeaderRef.current) {
+            isLeaderRef.current = true
+            startLeaderHeartbeat()
+          } else if (!amLeader && isLeaderRef.current) {
+            isLeaderRef.current = false
+            stopLeaderHeartbeat()
+          }
+        }
+      } catch {}
+    }
+    window.addEventListener('storage', onStorage)
+
     return () => {
-      socket.close()
+      shouldReconnectRef.current = false
+      try {
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current as unknown as number)
+        }
+        // stop leader election
+        if (leaderCheckIntervalRef.current) {
+          clearInterval(leaderCheckIntervalRef.current)
+          leaderCheckIntervalRef.current = null
+        }
+        // release lease if we are leader
+        try {
+          const key = LEASE_KEY(currentUserId)
+          const raw = localStorage.getItem(key)
+          if (raw) {
+            const data = JSON.parse(raw)
+            if (data && data.id === myTabId) {
+              localStorage.removeItem(key)
+            }
+          }
+        } catch {}
+
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current)
+          heartbeatIntervalRef.current = null
+        }
+        if (visibilityCleanupRef.current) {
+          visibilityCleanupRef.current()
+          visibilityCleanupRef.current = null
+        }
+        if (socketRef.current) {
+          socketRef.current.close()
+          socketRef.current = null
+        }
+      } catch {
+        // ignore
+      }
     }
   }, [chatId, currentUserId, sendMarkRead])
 

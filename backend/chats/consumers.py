@@ -124,6 +124,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 )
             return
 
+        # Heartbeat from client to refresh presence TTL (does not increment counter)
+        if data.get("type") == "presence_ping":
+            try:
+                from users.presence import refresh_presence
+
+                new_count = refresh_presence(user.id)
+                logger.debug(f"Presence ping for user {user.id}, count={new_count}")
+
+                # If key was missing and we set it to 1, broadcast online status
+                if new_count == 1:
+                    # Notify all participants in threads with this user
+                    thread_list = await sync_to_async(list)(Thread.objects.filter(users=user))
+                    for thread in thread_list:
+                        participants = await sync_to_async(list)(thread.users.exclude(id=user.id))
+                        for p in participants:
+                            await self.channel_layer.group_send(
+                                f"conversations_{p.id}",
+                                {
+                                    "type": "presence_update",
+                                    "user_id": user.id,
+                                    "online": True,
+                                }
+                            )
+            except Exception as e:
+                logger.error(f"Presence ping error: {e}")
+            return
+
         text = data.get("text", "").strip()
         if not text:
             return

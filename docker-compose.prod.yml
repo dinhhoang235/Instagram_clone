@@ -30,6 +30,7 @@ services:
     restart: unless-stopped
     expose:
       - "6379"
+    command: ["redis-server", "--notify-keyspace-events", "Ex"]
     volumes:
       - redis_data:/data
     networks:
@@ -70,6 +71,32 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
       interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  presence_listener:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: instagramClone-presence-listener-prod
+    restart: unless-stopped
+    command: ["python", "manage.py", "presence_listener"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - DB_HOST=db
+    networks:
+      - instagramClone-network
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "check"]
+      interval: 60s
       timeout: 10s
       retries: 3
       start_period: 40s

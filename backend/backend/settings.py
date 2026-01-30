@@ -128,6 +128,10 @@ CACHES = {
     }
 }
 
+# Presence TTL (seconds). Used to expire presence counters when a user goes offline.
+PRESENCE_TTL = int(os.environ.get("PRESENCE_TTL", 120))
+
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
