@@ -49,7 +49,6 @@ export function createChatSocket(chatId: number): WebSocket {
     // Properly URL encode the token to handle special characters
     const encodedToken = encodeURIComponent(token);
     const url = `${protocol}://${host}/ws/chat/${chatId}/?token=${encodedToken}`;
-    console.log("Connecting to WebSocket:", url);
 
     const socket = new WebSocket(url);
 
@@ -91,10 +90,9 @@ export function createConversationsSocket(): WebSocket {
   socket.onopen = () => console.log("Connected to Conversations WebSocket");
   socket.onerror = (err) => {
     console.error("WebSocket error:", err);
-    // You could implement reconnection logic here if needed
   };
   socket.onclose = (event) => {
-    console.log("Conversations WebSocket closed:", event.code, event.reason);
+    console.warn("Conversations WebSocket closed:", event.code, event.reason, 'wasClean:', event.wasClean);
     // Reconnect after a brief delay if connection was closed unexpectedly
     if (event.code !== 1000) {
       console.log("Attempting to reconnect in 3 seconds...");

@@ -24,6 +24,44 @@ interface WebSocketProviderProps {
 }
 
 export function MessageProvider({ children }: WebSocketProviderProps) {
+  // Dev-only: suppress noisy WebSocket handshake warning caused by React StrictMode
+  // during double-mount/unmount in development. This filters only the specific
+  // message so other console output remains unaffected.
+  React.useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return
+
+    // Ensure we patch only once per page
+    const win = window as Window & { __wsWarnPatched?: boolean }
+    if (win.__wsWarnPatched) return
+
+    const origWarn = console.warn.bind(console) as (...args: unknown[]) => void
+    const origError = console.error.bind(console) as (...args: unknown[]) => void
+
+    console.warn = (...args: unknown[]) => {
+      const message = args[0]
+      if (typeof message === 'string' && message.includes('WebSocket is closed before the connection is established')) {
+        return
+      }
+      origWarn(...(args as unknown[]))
+    }
+
+    console.error = (...args: unknown[]) => {
+      const message = args[0]
+      if (typeof message === 'string' && message.includes('WebSocket is closed before the connection is established')) {
+        return
+      }
+      origError(...(args as unknown[]))
+    }
+
+    win.__wsWarnPatched = true
+
+    return () => {
+      console.warn = origWarn
+      console.error = origError
+      win.__wsWarnPatched = false
+    }
+  }, [])
+
   const { isAuthenticated } = useAuth()
   const { updateConversation } = useConversationStore()
   const socketRef = useRef<WebSocket | null>(null)
@@ -184,9 +222,53 @@ export function MessageProvider({ children }: WebSocketProviderProps) {
     }
 
     // Close socket only if it's in a valid state
-    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
-      socketRef.current.close(1000, "User logged out")
+    if (socketRef.current) {
+      try {
+        // If the socket is currently CONNECTING, avoid calling close immediately because
+        // closing during the handshake can trigger the browser warning "WebSocket is closed before the connection is established".
+        // Instead, attach a temporary onopen handler that closes right after open (clean close),
+        // and set a small timeout fallback to force-close if it never opens.
+        const curr = socketRef.current
+
+        if (curr.readyState === WebSocket.CONNECTING) {
+          const fallbackTimeout = setTimeout(() => {
+            try {
+              // Try to close gracefully on timeout
+              curr.onopen = null
+              curr.onerror = null
+              curr.onclose = null
+              curr.close(1000, 'User logged out (timeout)')
+            } catch {
+              // Ignore
+            }
+          }, 5000)
+
+          curr.onopen = () => {
+            clearTimeout(fallbackTimeout)
+            try {
+              curr.onopen = null
+              curr.onerror = null
+              curr.onclose = null
+              curr.close(1000, 'User logged out (after open)')
+            } catch {
+              // Ignore
+            }
+          }
+
+          // Also silence potential error handler messages for this specific socket during the short window
+          curr.onerror = () => {
+            // noop
+          }
+        } else if (curr.readyState === WebSocket.OPEN) {
+          curr.close(1000, "User logged out")
+        }
+      } catch (err) {
+        // Ignore errors that happen when closing during the connect handshake in dev
+        console.debug('Ignored error while closing WebSocket:', (err as Error).message || err)
+      }
     }
+
+    // Clear our reference immediately so other logic treats this as not connected
     socketRef.current = null
     
     setIsConnected(false)
