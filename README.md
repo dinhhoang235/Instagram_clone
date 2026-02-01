@@ -5,10 +5,15 @@ A full-stack Instagram clone with real-time messaging, notifications, posts, sto
 ## ✨ Features
 
 - User authentication (JWT) with profile management
-- Posts with images, comments, likes, and hashtag support
-- Follow/unfollow, user search, and discovery
-- Real-time chat and notifications (WebSocket)
-- Privacy settings (private/public accounts, comment/message permissions)
+- Posts with images, comments, likes, hashtags, and support for image alt text
+- Hide likes & disable comments per-post (privacy controls)
+- Bookmarks / Saved posts (toggle & list)
+- Feed (`/api/posts/feed/`) and Explore (`/api/posts/explore/`) endpoints
+- Trending tags and popular places endpoints
+- Follow/unfollow, remove follower, suggested users, user search, and discovery
+- Real-time chat with file attachments, post-sharing into chats, mark-read and thread deletion (REST + WebSocket)
+- Real-time notifications (WebSocket) for likes, comments, mentions and follows; mark-as-read & unread filtering
+- Profile settings: tagging, story resharing, activity visibility, and light/dark theme
 - Responsive design with dark/light mode
 
 ## 🚀 Tech Stack
@@ -72,10 +77,46 @@ NEXT_PUBLIC_WS_HOST=localhost
 
 ## 📡 API Endpoints
 
-**Auth**: `POST /api/register/`, `POST /api/token/`, `POST /api/token/refresh/`
-**Core**: `GET/POST /api/posts/`, `GET /api/users/{id}/`, `POST /api/posts/{id}/like/`
-**Chat**: `GET /api/chats/`, `POST /api/chats/{id}/messages/`
-**WebSocket**: `ws://localhost/ws/chat/{thread_id}/`, `ws://localhost/ws/notifications/{user_id}/`
+**Auth**: `POST /api/register/`, `POST /api/token/`, `POST /api/token/refresh/`, `POST /api/users/change_password/`
+
+**Posts / Tags**:
+- `GET/POST /api/posts/` — create posts (supports images + `alt_texts`, `hide_likes`, `disable_comments`)
+- `POST /api/posts/{id}/like/` — like/unlike
+- `POST /api/posts/{id}/save/` — toggle save/bookmark
+- `GET /api/posts/saved/` — list saved posts for current user
+- `GET /api/posts/feed/` — feed from people you follow
+- `GET /api/posts/explore/` — explore feed
+- `GET /api/posts/places/popular/` — popular places
+- `GET /api/tags/trending/` — trending tags
+
+**Users / Profiles**:
+- `GET /api/users/me/` — current user
+- `POST /api/register/` — register new user
+- `POST /api/profile/{username}/toggle_follow/` — follow/unfollow
+- `POST /api/profile/{username}/remove_follower/` — remove a follower
+- `GET /api/profile/{username}/followers/` — list followers
+- `GET /api/profile/{username}/following/` — list following
+- `GET /api/profile/suggested/` — suggested users/discovery
+
+**Chats**:
+- `GET /api/chats/conversations/` — conversation list
+- `GET /api/chats/threads/{thread_id}/messages/` — list messages in a thread
+- `POST /api/chats/threads/{thread_id}/send-file/` — send a file/image in chat
+- `POST /api/chats/threads/{thread_id}/share-post/` — share a post into a chat
+- `POST /api/chats/threads/{thread_id}/mark-read/` — mark thread as read
+- `DELETE /api/chats/threads/{thread_id}/` — delete thread
+- `POST /api/chats/start/` — start a new conversation
+
+**Notifications**:
+- `GET /api/notifications/` — list notifications (`?unread=true` to filter)
+- `POST /api/notifications/mark_all_as_read/`
+- `POST /api/notifications/{id}/mark_as_read/`
+
+**WebSocket (real-time)**:
+- `ws://localhost/ws/chat/{thread_id}/` — chat messages & updates
+- `ws://localhost/ws/notifications/` — realtime notifications
+
+(See code for more endpoints and query params.)
 
 ## 🔧 Development
 
